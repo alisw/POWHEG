@@ -136,16 +136,16 @@ c Value and Derivative of alfa with respect to t
       return
       end
 
-      subroutine genericpdf(ndns,ih,xmu2,x,fx)
+      subroutine genericpdf(ndns,ih,xmu2,x,fx,iaa)
 c Interface to lhapdf package.
       implicit none
       include 'nlegborn.h'
       include 'pwhg_pdf.h'
-      integer ndns,ih
+      integer ndns,ih,iaa
       real * 8 xmu2,x,fx(-pdf_nparton:pdf_nparton)
       real * 8 fxlha(-6:6)
       integer j
-      real * 8 tmp
+      real * 8 tmp,aaa
       real*8 photon
       call genericpdfset(ndns)
 
@@ -153,7 +153,12 @@ c photon induced work only with MRST2004QED (ndns = 20460)
       if (ndns.eq.20460) then
           call evolvePDFphoton(x,sqrt(xmu2),fxlha,photon)
       else
-          call evolvePDF(x,sqrt(xmu2),fxlha)
+          if (iaa.eq.1) then
+              call evolvePDF(x,sqrt(xmu2),fxlha)
+          else
+              aaa=iaa*1.0
+              call evolvePDFa(x,sqrt(xmu2),aaa,fx)
+          endif
           photon=0d0
       endif
 c pftopdg returns density times x
@@ -211,11 +216,37 @@ c      endif
       real * 8 lam5
       integer iord
       common/cgenericpdf/lam5,iord
+      include 'nPDF.h'
+      character * 15 lhaparmstring
+      character * 2 str_nPDF_errSet
       call genericpdfset(ndns)
       scheme='MS'
       iret=0
       xlam=lam5
       iorder=iord
+c Check for atomic numbers greater than 1
+      if((nPDF_aa1 .ne. 1) .or. (nPDF_aa2 .ne. 1)) then
+c Convert the error set (integer from 1 to 31) to string
+          lhaparmstring=''
+          if(nPDF_errSet .ge. 10) then
+              write (str_nPDF_errSet,"(I2)") nPDF_errSet
+          else
+              write (str_nPDF_errSet,"(I1)") nPDF_errSet
+          endif
+          if(nPDF_set .eq. 1) then
+              lhaparmstring='EPS08'
+          elseif(nPDF_set .eq. 2) then
+              lhaparmstring='EPS09LO,'//str_nPDF_errSet
+          elseif(nPDF_set .eq. 3) then
+              lhaparmstring='EPS09NLO,'//str_nPDF_errSet
+          else
+              write(*,*) ' genericpdfpar: using default EKS98'
+          endif
+
+          if ( lhaparmstring .ne. '' ) then
+              call setlhaparm(lhaparmstring)
+          endif
+      endif
       end
 
       function whichpdfpk()

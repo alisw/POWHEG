@@ -1,13 +1,14 @@
       subroutine pdfcall(ih,x,pdf)
       implicit none
       include 'pwhg_pdf.h'
+      include 'nPDF.h'
       integer ih
       real * 8 x,pdf(-pdf_nparton:pdf_nparton)
       include 'pwhg_st.h'
       if(ih.eq.1) then
-         call genericpdf0(pdf_ndns1,pdf_ih1,st_mufact2,x,pdf)
+         call genericpdf0(pdf_ndns1,pdf_ih1,st_mufact2,x,pdf,nPDF_aa1)
       elseif(ih.eq.2) then
-         call genericpdf0(pdf_ndns2,pdf_ih2,st_mufact2,x,pdf)
+         call genericpdf0(pdf_ndns2,pdf_ih2,st_mufact2,x,pdf,nPDF_aa2)
       else
          write(*,*) ' pdfcall: invalid call, ih=',ih
          stop
@@ -21,12 +22,12 @@ c stored calls; if a match its found, its return value is used.
 c In this framework it is found that nrec=8 would be enough.
 c This provides a remarkable increase in spead (better than a factor of 3)
 c when cteq6 pdf are used.
-      subroutine genericpdf0(ns,ih,xmu2,x,fx)
+      subroutine genericpdf0(ns,ih,xmu2,x,fx,iaa)
       implicit none
       include 'pwhg_pdf.h'
       integer maxparton
       parameter (maxparton=22)
-      integer ns,ih
+      integer ns,ih,iaa
       real * 8 xmu2,x,fx(-pdf_nparton:pdf_nparton)
       integer nrec
       parameter (nrec=10)
@@ -79,7 +80,8 @@ c set to impossible values to begin with
       oih(irec)=ih
       oxmu2(irec)=xmu2
       ox(irec)=x
-      call genericpdf(ns,ih,xmu2,x,ofx(-pdf_nparton:pdf_nparton,irec))
+      call genericpdf(ns,ih,xmu2,x,ofx(-pdf_nparton:pdf_nparton,irec),
+     &iaa)
 c Flavour thresholds:
       if(xmu2.lt.bottomthr2) then
          ofx(5,irec)=0
