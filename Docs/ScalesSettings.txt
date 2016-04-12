@@ -1,0 +1,109 @@
+
+The scale choice is POWHEG is usually a function of the UNDERLYING
+BORN kinematics.  That means, for example, that in W or Z or H
+production the pt of the boson is not available for scale setting
+purposes. There is, however, a way to set the scale in a totally
+generic way (but you should know what you are doing, if you are trying
+this!)
+
+If you want that the scale for real events is set using the real
+kinematics, set the flag:
+
+btlscalereal 1
+
+in the powheg.input file. In this case the scale can be set using real
+kinematics for both real events and their subtraction terms. If you
+want to have subtraction terms evaluated at their physical scale (that
+corresponds again to the underlying Born scale) then set also
+
+btlscalect 1
+
+In order to exploit these features, you must edit the
+set_fac_ren_scales(muf,mur) subroutine in the user process, and set
+the scales as follows:
+
+   if(flg_btildepart .eq. 'b' .or. flg_btildepart .eq. 'c') then
+c here set the scales as a function of the underlying Born momenta, kn_cmpborn(0:3,1:nlegborn) 
+     ...
+   else if(flg_btildepart .eq. 'r') then
+c here set the scales as a function of the real momenta, kn_cmpreal(0:3,1:nlegreal)
+     ...
+   endif
+
+The monenta have dimension: p(0:3), with 0 being the time component. In order to know how the
+partons are labelled, look at the init_processes file in the process dependent directory.
+
+Notice that, because of the way POWHEG works, using this feature will mostly affect the remnants,
+especially if you use hdamp. In fact, POWHEG generates two kind of events, that may be thought as
+analog of the S and H event of MCatNLO (see arXiv:1202.1251). In S events, a Born configuration
+is generated according to the NLO cross section for producing a given underlying Born configuration.
+Radiation is then generated using a Shower formula. Scale settings in S events only affect the NLO
+cross section for the underlying Born. Using a scale that depends upon the real configuration in S
+events will then only affects the contribution to the NLO cross section in case of events with hard
+radiation, while that cross section is dominated by moderate pt radiation. On the other hand, H
+events are generated as they are, and are affected directly by scale settings.
+
+
+EXAMPLE:
+In the case of the POWHEG-BOX/hvq generator, you may modify the scale setting routine as follows:
+
+      subroutine set_fac_ren_scales(muf,mur)
+      implicit none
+      include 'nlegborn.h'
+      include 'pwhg_flst.h'
+      include 'pwhg_kn.h'
+      include 'pwhg_flg.h'   ! you need this to have access to flg_btildepart
+      real * 8 muf,mur
+      logical ini
+      data ini/.true./
+      logical runningscales
+      save runningscales
+      real * 8 pt2
+      real * 8 powheginput
+      external powheginput
+      if(ini) then
+         if(powheginput('#fixedscale').eq.1) then
+            runningscales=.false.
+         else
+            runningscales=.true.
+         endif
+      endif
+      if (runningscales) then
+         if (ini) then
+            write(*,*) '****************************************'
+            write(*,*) '****************************************'
+            write(*,*) '**   mur=sqrt(pt^2+m^2)               **'
+            write(*,*) '**   muf=sqrt(pt^2+m^2)  in bbar func.**'
+            write(*,*) '****************************************'
+            write(*,*) '****************************************'
+            ini=.false.            
+         endif
+c Notice: this works if "btlscalereal 1" and "btlscalect 1" appear in the powheg.input
+c The scale in the 'b' and 'c' case should coincide with the scale in the 'r'
+c case when the 'r' configuration has very low pt emission (the emitted parton is #5)
+c In the present case, particles are numbered:
+c 1 (incoming left), 2 (incoming right), 3 (top), 4(tbar), 5 (radiated parton);
+c Momenta are stored as 0 (en), 1 (x), 2 (y), 3 (z), z being the beam direction.
+	 if(flg_btildepart .eq. 'b' .or. flg_btildepart .eq. 'c') then
+	    pt2=kn_pborn(1,3)**2+kn_pborn(2,3)**2+kn_masses(3)**2          ! for Born like configurations
+	 elseif(flg_btildepart .eq. 'r') then
+	    pt2=kn_preal(1,3)**2+kn_preal(2,3)**2+kn_masses(3)**2          ! for configurations with real emission
+	 endif	
+         mur=sqrt(pt2)
+         muf=mur
+      else
+         if (ini) then
+            write(*,*) '***************************'
+            write(*,*) '***************************'
+            write(*,*) '**   mur=m               **'
+            write(*,*) '**   muf=m  in bbar func.**'
+            write(*,*) '***************************'
+            write(*,*) '***************************'
+            ini=.false.            
+         endif
+         muf=kn_masses(3)
+         mur=muf
+      endif
+      end
+
+

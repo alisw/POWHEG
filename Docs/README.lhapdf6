@@ -1,0 +1,30 @@
+The lhapdf interface in POWHEG-BOX-V2 works also with lhapdf6, except that
+when pdf reweighting is needed it becomes extremely slow. This is because
+the new "GLUE" interface does not allow having more than one instance
+of pdf in memory.
+
+In order to overcome this problem, there is a new interface to lhapdf,
+that is not compatible with lhadf versions < 6.
+
+In order to link it, do the following:
+
+Edit the Makefile of the process you are interested in.
+You will typically find an lhapdf section of the form:
+
+ifeq ("$(PDF)","lhapdf")
+LHAPDF_CONFIG=lhapdf-config
+PDFPACK=lhapdfif.o
+LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF
+LIBS+=$(LIBSLHAPDF)
+endif
+
+Change the PDFPACK line as follows:
+
+PDFPACK=lhapdf6if.o lhapdf6ifcc.o
+
+and recompile.
+A tested example can be found in the W (V2) process.
+
+
+Remember: this will not work if your lhapdf-config points to a version < 6
+lhapdf package.

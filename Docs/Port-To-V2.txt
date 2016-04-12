@@ -1,0 +1,35 @@
+Minimal instructions to port a process from the POWHEG-BOX to the POWHEG-BOX-V2.
+
+
+First copy the process to V2. For example, for Wp_Wp_J_J I did:
+
+$ svn copy  svn://powhegbox.mib.infn.it/trunk/POWHEG-BOX/Wp_Wp_J_J svn://powhegbox.mib.infn.it/trunk/User-Processes-V2/Wp_Wp_J_J
+
+Edit nlegborn.h, and add the lines:
+
+      integer maxalr
+      parameter (maxalr=maxprocreal*nlegreal*(nlegreal-1)/2)
+
+After the first run, the output will tell the effective minimum value
+that can be used for maxalr (and also for maxborn and
+maxprocreal). These numbers can be updated then, in order to save
+memory.
+
+Edit the Makefile. In the PWHG variable add:
+ setlocalscales.o validflav.o pwhgreweight.o opencount.o
+ubprojections.o utils.o 
+
+
+If the program was using experimental features that were later integrated into
+V2, eliminate them, so that the default V2 features will be used.
+
+When comparing the output of the ported V2 version to the previous (V1) version,
+in order to get binary identity between the output one must:
+
+1) run in single process mode (i.e. remove manyseeds and parallelstage)
+2) add the line
+olddij 1
+   to the powheg.input file.
+
+Make sure that the implementation does not use a local copy of any file
+in the mother directory POWHEG-BOX-V2; otherwise correct the local copy to match the one in the mother directory as required.

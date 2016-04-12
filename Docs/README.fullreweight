@@ -1,0 +1,40 @@
+We document here an extension of the reweighting feature of POWHEG
+that can also reweigth the generation of radiation for a new PDF
+set and the corresponding change in alpha_S. 
+
+This feature is activated by setting the flag
+
+fullrwgt 1
+
+in the powheg.input file, when running in reweighting mode,
+i.e. with the setting
+
+compute_rwgt 1
+
+in the Les Houches file.
+
+The reweighting operates only on the generation of initial
+state radiation. It is thus effective for processes as W/Z, H and
+t-tbar (with no radiation from top decay) and similar processes (i.e.
+W/Z pairs, HW, HZ, etc.). Final
+state radiation does not depend directly upon the PDF's;
+however, the different value of Lambda_QCD associated with
+different PDF's can have an effect on final state radiation.
+Furthermore, final state radiation competes with initial state
+radiation in POWHEG, thus modifying the Sudakov form factors.
+An extension of the procedure to final state radiation may
+be possible, but it is not pursued at the moment.
+
+When using the LHAPDF6 package, it is mandatory to use the new
+POWHEG interface for LHAPDF6. If not, switching between the two
+differen pdf sets will slow down the reweighting procedure by
+a considerable amount. 
+
+An example of the procedure is given in the W process, where the newly
+added subdirectory test-fullrwgt includes a new Makefile, using the
+appropriate interface to the LHAPDF6 package, and a simplified
+analysis file at the Les Houches level. In the two run subdirectories,
+testrun-wm-lhc-8TeV-ct10 and testrun-wm-lhc-8TeV-MRST, the input files
+for parallel runs are included. In the testrun-wm-lhc-8TeV-ct10 run, a
+run is performed with the ct10 pdf's, and it is reweighted to the MRST
+one's, while the testrun-wm-lhc-8TeV-MRST does the opposite.

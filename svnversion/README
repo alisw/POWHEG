@@ -1,0 +1,22 @@
+If you want your pwhg_main executable to write to the log files and to the .lhe
+files some information on the SVN status of the directory where the compilation
+was performed, do the following:
+
+a) Edit the Makefile in your process directory
+
+b) Insert the line
+
+$(shell ../svnversion/svnversion.sh>/dev/null)
+
+before the pwhg_main target
+
+c) Insert the lines
+
+pwhg_main.o: svn.version
+lhefwrite.o: svn.version
+
+at the end of the file.
+
+Do make. Now the executable pwhg_main will write out svn information when
+started, and the same information will be written to the lhe file.
+The information is hardwired in the executable.
