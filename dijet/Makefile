@@ -44,6 +44,12 @@ endif
 
 OBJ=obj-$(COMPILER)
 
+ifeq (osx, $(findstring osx,$(ARCHITECTURE)))
+LIBGFORTRANPATH=$(shell dirname `gfortran -print-file-name=libgfortran.dylib`)
+else
+LIBGFORTRANPATH=$(shell dirname `gfortran -print-file-name=libgfortran.so`)
+endif
+
 PWD=$(shell pwd)
 WDNAME=$(shell basename $(PWD))
 VPATH= ./:../:$(OBJ)/
@@ -113,7 +119,8 @@ PWHG=pwhg_main.o pwhg_init.o bbinit.o btilde.o lhefwrite.o		\
 
 # target to generate LHEF output
 pwhg_main:$(PWHG)
-	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) $(STATIC) -o $@
+#	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) $(STATIC) -o $@
+	$(CXX) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) -L$(LIBGFORTRANPATH) -lgfortran $(STATIC) -o $@
 
 LHEF=lhef_analysis.o boostrot.o random.o cernroutines.o		\
      opencount.o powheginput.o $(PWHGANAL)	\
