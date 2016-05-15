@@ -176,6 +176,23 @@ c 1 is proton, -1 is antiproton, 3 is pi+, -3 is pi-
             fx(j)=fx(-j)
             fx(-j)=tmp
          enddo
+c Do the neutron (Suggested by Jan Kretzschmar, 17/4/2013)
+      elseif(abs(ih).eq.2) then
+c 2 is neutron: exchange u and d pdfs
+        tmp=fx(1)
+        fx(1)=fx(2)
+        fx(2)=tmp
+        tmp=fx(-1)
+        fx(-1)=fx(-2)
+        fx(-2)=tmp
+        if(ih.eq.-2) then
+c -2 is anti-neutron: exchange quarks and anti-quarks, then u and d pdfs
+          do j=1,6
+            tmp=fx(j)
+            fx(j)=fx(-j)
+            fx(-j)=tmp
+          enddo
+        endif
       elseif(ih.eq.3) then
          tmp=fx(1)
          fx(1)=fx(-1)
