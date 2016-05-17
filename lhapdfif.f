@@ -157,7 +157,7 @@ c photon induced work only with MRST2004QED (ndns = 20460)
               call evolvePDF(x,sqrt(xmu2),fxlha)
           else
               aaa=iaa*1.0
-              call evolvePDFa(x,sqrt(xmu2),aaa,fx)
+              call evolvePDFa(x,sqrt(xmu2),aaa,fxlha)
           endif
           photon=0d0
       endif
