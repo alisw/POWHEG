@@ -10,6 +10,7 @@
       include 'pwhg_flg.h'
       include 'pwhg_par.h'
       include 'pwhg_physpar.h'
+      include 'nPDF.h'
       character * 5 scheme
       character * 3 whichpdfpk
       real * 8 powheginput
@@ -46,6 +47,14 @@ c collinear remnant generation. Needed for charm at LHC
 c End initialization of common block defaults.
       pdf_ih1=powheginput('ih1')
       pdf_ih2=powheginput('ih2')
+      nPDF_aa1=powheginput('#AA1')
+      nPDF_aa2=powheginput('#AA2')
+      if(nPDF_aa1 .lt. 0) nPDF_aa1=1
+      if(nPDF_aa2 .lt. 0) nPDF_aa2=1
+      nPDF_set=powheginput('#nPDFset')
+      nPDF_errSet=powheginput('#nPDFerrSet')
+      if(nPDF_set .lt. 0) nPDF_set=0
+      if(nPDF_errSet .lt. 0) nPDF_errSet=1
       if(whichpdfpk().eq.'lha') then
          pdf_ndns1=powheginput('lhans1')
          pdf_ndns2=powheginput('lhans2')
