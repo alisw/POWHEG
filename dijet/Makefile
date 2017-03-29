@@ -100,7 +100,7 @@ endif
 	$(CC) $(DEBUG) -c -o $(OBJ)/$@ $^ 
 
 %.o: %.cc
-	$(CXX) $(DEBUG) -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
+	$(CXX) $(DEBUG) -std=c++11 -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
 
 USER=init_couplings.o init_processes.o Born_phsp.o Born.o virtual.o	\
      real.o $(PWHGANAL)
@@ -119,8 +119,7 @@ PWHG=pwhg_main.o pwhg_init.o bbinit.o btilde.o lhefwrite.o		\
 
 # target to generate LHEF output
 pwhg_main:$(PWHG)
-#	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) $(STATIC) -o $@
-	$(CXX) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) -L$(LIBGFORTRANPATH) -lgfortran $(STATIC) -o $@
+	$(CXX) $(patsubst %,$(OBJ)/%,$(PWHG)) -L$(CGAL_ROOT)/lib $(LIBS) $(LIBSFASTJET) -L$(LIBGFORTRANPATH) -lgfortran $(STATIC) -o $@
 
 LHEF=lhef_analysis.o boostrot.o random.o cernroutines.o		\
      opencount.o powheginput.o $(PWHGANAL)	\
