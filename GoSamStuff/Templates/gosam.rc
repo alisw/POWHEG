@@ -1,0 +1,147 @@
+######################################################################
+#                                                                    #
+#          THIS FILE IS A TEMPLATE OF THE GoSam INPUT FILE           #
+#                                                                    #
+# The informations contained in this file are passed to GoSam        #
+# together with the informations contained in the LH-orderfile       #
+# 'orderfile.lh' to generate the 1-loop virtual amplitudes.          #
+#                                                                    #
+# Please ADAPT this file to your needs before running the "BuildGS"  #
+# script.                                                            #
+#                                                                    #
+#	FOR MORE INFORMATIONS ABOUT THE POSSIBLE OPTIONS PLEASE	     #
+#	REFER TO THE GOSAM MANUAL (http://gosam.hepforge.org/)	     #
+#                                                                    #
+######################################################################
+
+######################################################################
+## ------------------------ physics options ----------------------- ##
+######################################################################
+
+##-- model ---------------------------------------------------------##
+#  Choose between SM and SM with diagonal CKM matrix or SM with      #
+#  effective Higgs-gluon-gluon coupling:                             #
+#  sm, smdiag, smehc                                                 #
+##------------------------------------------------------------------##
+model=smdiag
+
+##-- one/zero ------------------------------------------------------##
+#    A list of symbols that should be treated as identically         #
+#    one/zero throughout the whole calculation. Within Powhegbox     #
+#    gs,e should always be treated as identical to one               #
+##------------------------------------------------------------------##
+one=gs,e
+zero=me,mU,mD,mC,mS,mB,wB,wT
+
+##-- symmetries (comma separated list) -----------------------------##
+#    Specifies the symmetries of the amplitude.                      #
+#    This information is used to generate the list of helicities.    #
+#                                                                    #
+#    Possible values are:                                            #
+#                                                                    #
+#   * flavour   -- no flavour changing interactions                  #
+#                  When calculating the list of helicities, fermion  #
+#                  lines of PDGs 1-6 are assumed not to mix.         #
+#                                                                    #
+#   * family    -- flavour changing only within families             #
+#                  When calculating the list of helicities, fermion  #
+#                  lines of PDGs 1-6 are assumed to mix only within  #
+#                  families, i.e. a quark line connecting a up with  #
+#                  a down quark would be considered, while up and    #
+#                  bottom is not.                                    #
+#                                                                    #
+#   * lepton    -- means for leptons what 'flavour' means for quarks #
+#                                                                    #
+#   * generation-- means for leptons what 'family' means for quarks  #
+#                                                                    #
+#   * <n>=<h>   -- restriction of particle helicities,  e.g.         #
+#                  1=-, 2=+ specifies helicities of particles 1, 2   #
+#                                                                    #
+#   * %<n>=<h>  -- restriction by PDG code, e.g.                     #
+#                  %23=+- specifies the helicity of all Z-bosons to  #
+#                  be '+' and '-' only (no '0' polarisation).        #
+#                  %<n> refers to both +n and -n                     #
+#                  %+<n> refers to +n only                           #
+#                  %-<n> refers to -n only                           #
+#                                                                    #
+##------------------------------------------------------------------##
+symmetries=generation,family
+
+##-- qgraf.verbatim (text) -----------------------------------------##
+#   This option allows to send verbatim lines to the file qgraf.dat. #
+#   This allows to put additional restrictions on the diagrams.      #
+#   This option is mainly inteded for the use of the operators       #
+#       rprop, iprop, chord, bridge, psum                            #
+#   Note, that the use of 'vsum' might interfer with the             #
+#   option qgraf.power.                                              #
+#   Please, refer to the QGraf documentation for details.            #
+##------------------------------------------------------------------##
+qgraf.verbatim=\
+# no proparators for the following particles: \n\
+true=iprop[ep,em,ne,nebar,phim,phip,chi,0,0];
+## at least one Wm,Wp and at most two : \n\
+##true=iprop[Wp,Wm,1,2];
+
+##-- filter (text) -------------------------------------------------##
+#  A python function which provides a filter for loop diagrams.	     #
+#  For more details about this option we refer to the GoSam manual   #  
+#  Ideally filters are defined in a separate file, whose PATH is     #
+#  set in the filter.module option. If the file with the filters     #
+#  is in the same directory as this one, giving the name is enough.  #
+##------------------------------------------------------------------##
+#filter.module=filter.py
+#filter.lo= no_hff
+#filter.nlo= no_hff
+
+##-- extensions ----------------------------------------------------##
+#  The extension 'olp_badpts' is needed when generating code to be   #
+#  run within the POWHEG-BOX.                                        #
+##------------------------------------------------------------------##
+extensions=olp_badpts
+
+##-- PSP_check -----------------------------------------------------##
+#    Phase Space Point check parameters:                             #
+#    PSP_chk_th1: threshold to accept single pole check              #
+#    PSP_chk_th2: threshold to declare rescue failed                 #
+#    PSP_chk_th2: threshold to perform rotation                      #
+#    PSP_chk_kfactor: Threshold on the k-factor to declare a PSP as  #
+#                     bad point                                      #
+#    For more detail see the GoSam manual:                           #
+#    http://www.hepforge.org/archive/gosam/gosam-2.0.pdf             #
+##------------------------------------------------------------------##
+PSP_chk_th1=8
+PSP_chk_th2=3
+PSP_chk_th3=5
+PSP_chk_kfactor=-1
+
+######################################################################
+# program options: do not change unless you know what you are doing  #
+######################################################################
+
+##-- qgraf.bin -----------------------------------------------------##
+#    Points to the QGraf executable.                                 #
+#    Example:                                                        #
+#    qgraf.bin=/home/my_user_name/bin/qgraf                          #
+##------------------------------------------------------------------##
+qgraf.bin=qgraf
+
+##-- form.bin (text) -----------------------------------------------##
+#    Points to the Form executable.                                  #
+#    Examples:                                                       #
+#    form.bin=tform  |     form.bin=/home/my_user_name/bin/form      #
+##------------------------------------------------------------------##
+form.bin=tform
+
+##-- form.threads (text) -------------------------------------------##
+#    Selects how many threads form uses.                             #
+##------------------------------------------------------------------##
+form.threads=4
+
+##-- form.tempdir (text) -------------------------------------------##
+#    Temporary directory for Form. Should point to a directory       #
+#    on a local disk.                                                #
+#    Examples:                                                       #
+#    form.tempdir=/tmp   | form.tempdir=/scratch                     #
+##------------------------------------------------------------------##
+form.tempdir=/tmp
+

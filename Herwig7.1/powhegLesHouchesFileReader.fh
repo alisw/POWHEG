@@ -1,0 +1,15 @@
+// -*- C++ -*-
+//
+// powhegLesHouchesReader.fh is - (c) Silvia Ferrario Ravasio and Tomas Jezo
+// inspired by LesHouchesFileReader.fh which is a part of ThePEG
+//
+#ifndef ThePEG_powhegLesHouchesFileReader_FH
+#define ThePEG_powhegLesHouchesFileReader_FH
+
+namespace ThePEG {
+
+class powhegLesHouchesFileReader;
+
+}
+
+#endif

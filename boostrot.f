@@ -14,7 +14,11 @@ c      if (abs(beta).ge.1d0) then
 c         write(*,*) '********** WARNING ***************'
 c         write(*,*) 'mboost called with beta=',beta
 c         write(*,*) '**********************************'
-c      endif
+c     endif
+      if(beta == 0) then
+         vout=vin
+         return
+      endif
       if (beta.ge.1d0) then
          beta = 1-tiny
       elseif (beta.le.-1d0) then
@@ -33,7 +37,6 @@ c      endif
       enddo
       end
 
-
       subroutine mrotate(dir,sinphi,cosphi,vec)
 c Rotates vector vec counterclockwise around the direction
 c dir (|dir|=1) with angle phi, given sin phi and cos phi.
@@ -51,7 +54,22 @@ c dir (|dir|=1) with angle phi, given sin phi and cos phi.
       enddo
       end
 
-
+      subroutine rotate3tovec(v,vec)
+c Rotate vec with the rotation that brings v along the positive
+c third direction.
+      implicit none
+      real * 8 v(3),vec(3)
+      real * 8 d(3),dir(3),cosphi,sinphi
+      d = v/sqrt(v(1)**2+v(2)**2+v(3)**2)
+      cosphi = d(3)
+      dir(1) = d(2)
+      dir(2) = -d(1)
+      dir(3) = 0
+      sinphi = sqrt(d(1)**2+d(2)**2)
+      if(sinphi.lt.1d-9) return
+      dir = - dir/sinphi
+      call mrotate(dir,sinphi,cosphi,vec)
+      end
 
       subroutine boost2reson(pres,nm,pin,pout)
       implicit none
@@ -59,10 +77,14 @@ c dir (|dir|=1) with angle phi, given sin phi and cos phi.
       real * 8 pres(0:3),pin(0:3,nm),pout(0:3,nm)
       real * 8 vec(3),beta
       beta=sqrt(pres(1)**2+pres(2)**2+pres(3)**2)/pres(0)
-      vec(1)=pres(1)/(beta*pres(0))
-      vec(2)=pres(2)/(beta*pres(0))
-      vec(3)=pres(3)/(beta*pres(0))
-      call mboost(nm,vec,-beta,pin,pout)
+      if(beta < 1d-30) then
+         pout = pin
+      else
+         vec(1)=pres(1)/(beta*pres(0))
+         vec(2)=pres(2)/(beta*pres(0))
+         vec(3)=pres(3)/(beta*pres(0))
+         call mboost(nm,vec,-beta,pin,pout)
+      endif
       end
 
       subroutine boost2resoninv(pres,nm,pin,pout)

@@ -100,21 +100,16 @@ c we are in a counterterm.
       external pwhg_alphas
       character * 3 whichpdfpk
       external whichpdfpk
-      integer ini,mem
-      data ini/0/
-      save ini
-      
-      if (ini.eq.0) then
-         if( whichpdfpk().eq.'lha') then
-            continue
-         elseif( whichpdfpk().eq.'mlm') then    
-            continue
-         else
-            write(*,*) ' unimplemented pdf package',whichpdfpk()
-            stop
-         endif 
-         ini=1
-      endif
+
+      if( whichpdfpk().eq.'lha') then
+         continue
+      elseif( whichpdfpk().eq.'mlm') then    
+         continue
+      else
+         write(*,*) ' unimplemented pdf package',whichpdfpk()
+         call exit(-1)
+      endif 
+
       st_mufact2=max(pdf_q2min,ptsq) 
 cccccccccccccccccccccccccccccccccc
 c     In case of final-state radiation, Born and real PDF's
@@ -145,10 +140,36 @@ c     mufact (50 is an arbitrary choice).
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       include 'pwhg_rad.h'
+      include 'pwhg_pdf.h'
       real * 8 b0,mu0sq,as,pwhg_alphas
       external pwhg_alphas
       b0=(33-2*5)/(12*pi)
       mu0sq=(2*st_lambda5MSB)**2
+ccccccccccccc
+c     !: 20-05-2016: Improvement: rather than freezing CMW alphas, in
+c     order to avoid that aCMW/alphas0 exceeds 1 (which creates an
+c     upper-bound violation when generating ISR), it's enough to just
+c     increase a bit the scale at which aCMW (computed starting from the
+c     running of LHAPDF) is matched to alphas0. This scale is mu0sq.
+c     Using 4*lambda rather than 2*lambda was found empirically.  Notice
+c     that this should not affect physics result, since the cutoff on
+c     radiation is above mu0sq, i.e. rad_ptsqmin > mu0sq.
+      if(pdf_alphas_from_pdf) then
+         mu0sq=(4*st_lambda5MSB)**2
+      else
+         mu0sq=(2*st_lambda5MSB)**2
+      endif
+c     Moreover, pwhg_alphas0 can be called always with nlc=5, so
+c     changing nlc in this file and in gen_radiation.f is not needed
+c     anymore. Recall that alphas0 is just used as a function that
+c     should be bigger than aCMW through all the pt region that can be
+c     probed when generating ISR (BOX paper, E.2). For single top, I
+c     have kept these changes, but there was no real reason to do so.
+
+c     Notice that in this way we can reproduce exactly what we run for the
+c     WWJ-MiNLO paper, as well as for the WW@NNLOPS paper
+ccccccccccc 
+      
 c running value of alpha at initial scale (see notes: running_coupling)
       as=pwhg_alphas(mu0sq,st_lambda5MSB,-1)
 c for better NLL accuracy (FNO2006, (4.32) and corresponding references)
@@ -181,6 +202,7 @@ c
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       include 'pwhg_rad.h'
+      include 'pwhg_pdf.h'
       real * 8 pwhg_alphas,q2,xlam
       integer inf
       real * 8 pi
@@ -192,19 +214,8 @@ c
       data olam/0.d0/
       save olam,b5,bp5,b4,bp4,b3,bp3,xlc,xlb,xllc,xllb,c45,c35,xmc,xmb
 
-c      logical ini
-c      data ini/.true./
-c      save ini
-c      pwhg_alphas = 30d0
-c      if (ini) then
-c         write(*,*) '****************************************'
-c         write(*,*) '****************************************'
-c         write(*,*) '      RETURN alpha_s = ',pwhg_alphas
-c         write(*,*) '****************************************'
-c         write(*,*) '****************************************'
-c         ini = .false.         
-c      endif           
-c      return
+      real *8 alphasfrompdf
+
 
       if(xlam.ne.olam) then
         olam = xlam
@@ -229,26 +240,31 @@ c      return
       xlq = 2 * log( q/xlam )
       xllq = log( xlq )
       nf = inf
-      if( nf .lt. 0) then
-        if( q .gt. xmb ) then
-          nf = 5
-        elseif( q .gt. xmc ) then
-          nf = 4
-        else
-          nf = 3
-        endif
-      endif
-      if    ( nf .eq. 5 ) then
-        pwhg_alphas = 1/(b5 * xlq) -  bp5/(b5 * xlq)**2 * xllq
-      elseif( nf .eq. 4 ) then
-        pwhg_alphas =
-     #    1/( 1/(1/(b4 * xlq) - bp4/(b4 * xlq)**2 * xllq) + c45 )
-      elseif( nf .eq. 3 ) then
-        pwhg_alphas =
-     #    1/( 1/(1/(b3 * xlq) - bp3/(b3 * xlq)**2 * xllq) + c35 )
+
+      if(pdf_alphas_from_pdf) then
+         pwhg_alphas=alphasfrompdf(q)
       else
-        print *,'error in alfa: unimplemented # of light flavours',nf
-        call exit(1)
+         if( nf .lt. 0) then
+            if( q .gt. xmb ) then
+               nf = 5
+            elseif( q .gt. xmc ) then
+               nf = 4
+            else
+               nf = 3
+            endif
+         endif
+         if    ( nf .eq. 5 ) then
+            pwhg_alphas = 1/(b5 * xlq) -  bp5/(b5 * xlq)**2 * xllq
+         elseif( nf .eq. 4 ) then
+            pwhg_alphas =
+     #1/( 1/(1/(b4 * xlq) - bp4/(b4 * xlq)**2 * xllq) + c45 )
+         elseif( nf .eq. 3 ) then
+            pwhg_alphas =
+     #1/( 1/(1/(b3 * xlq) - bp3/(b3 * xlq)**2 * xllq) + c35 )
+         else
+          print *,'error in alfa: unimplemented # of light flavours',nf
+          call exit(1)
+         endif
       endif
       return
       end

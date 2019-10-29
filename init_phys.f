@@ -7,10 +7,10 @@
       include 'pwhg_st.h'
       include 'pwhg_rad.h'
       include 'pwhg_dbg.h'
+      include 'pwhg_rnd.h'
       include 'pwhg_flg.h'
       include 'pwhg_par.h'
       include 'pwhg_physpar.h'
-      include 'nPDF.h'
       character * 5 scheme
       character * 3 whichpdfpk
       real * 8 powheginput
@@ -45,16 +45,11 @@ c flag to use importance sampling in the x variable in
 c collinear remnant generation. Needed for charm at LHC
       flg_collremnsamp=.false.
 c End initialization of common block defaults.
+c     This factor was introduced for the MiNNLOStuff work.
+c     If set to 1 leaves the lhapdf behaviour unchanged.
+      pdf_cutoff_fact=1
       pdf_ih1=powheginput('ih1')
       pdf_ih2=powheginput('ih2')
-      nPDF_aa1=powheginput('#AA1')
-      nPDF_aa2=powheginput('#AA2')
-      if(nPDF_aa1 .lt. 0) nPDF_aa1=1
-      if(nPDF_aa2 .lt. 0) nPDF_aa2=1
-      nPDF_set=powheginput('#nPDFset')
-      nPDF_errSet=powheginput('#nPDFerrSet')
-      if(nPDF_set .lt. 0) nPDF_set=0
-      if(nPDF_errSet .lt. 0) nPDF_errSet=1
       if(whichpdfpk().eq.'lha') then
          pdf_ndns1=powheginput('lhans1')
          pdf_ndns2=powheginput('lhans2')
@@ -65,6 +60,10 @@ c End initialization of common block defaults.
          write(*,*) ' unimplemented pdf package',whichpdfpk()
          stop
       endif
+c     the following are needed only if fullrwgt is on, and are
+c     set in due time. They are better initialized as follows
+      pdf_ndns1lhe = pdf_ndns1
+      pdf_ndns2lhe = pdf_ndns2
       if(pdf_ndns1.ne.pdf_ndns2) then
          st_lambda5MSB=powheginput('QCDLambda5')
       else
@@ -150,10 +149,10 @@ c initialize number of singular regions
       dbg_colltest=.true.
       if(powheginput("#softtest").eq.0) dbg_softtest=.false.
       if(powheginput("#colltest").eq.0) dbg_colltest=.false.
-      if(flg_withdamp) then
-         write(*,*) ' POWHEG: no soft tests if withdamp is set'
-         dbg_softtest=.false.
-      endif
+c      if(flg_withdamp) then
+c         write(*,*) ' POWHEG: no soft tests if withdamp is set'
+c         dbg_softtest=.false.
+c      endif
       if(flg_bornonly) then
          write(*,*)
      $        ' POWHEG: no soft and coll. tests if bornonly is set'
@@ -162,7 +161,12 @@ c initialize number of singular regions
       endif
       if (dbg_softtest.or.dbg_colltest) then         
          call newunit(iun)
-         open(unit=iun,file='pwhg_checklimits')
+         if(rnd_cwhichseed == 'none') then
+            open(unit=iun,file='pwhg_checklimits')
+         else
+            open(unit=iun,
+     1       file='pwhg_checklimits-'//trim(rnd_cwhichseed))
+         endif
          call checklims(iun)
          call printbornequiv
          call flush(iun)

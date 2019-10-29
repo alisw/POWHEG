@@ -29,7 +29,8 @@ OPT=-O2
 #DEBUG= -ggdb 
 ifdef DEBUG
 OPT=-O0
-FPE=-ffpe-trap=invalid,zero,overflow,underflow
+FPE=-ffpe-trap=invalid,zero,overflow
+#,underflow
 endif
 endif
 
@@ -50,6 +51,7 @@ endif
 endif
 
 GOSAMLIBS=$(shell cd GoSamlib ; echo *.f *.f90 ' ' | sed 's/qlonshellcutoff.f// ; s/qlconstants.f// ; s/.f /.o /g ; s/.f90 /.o /g ; ' | tee GoSamlib.txt)
+GOSAMLIBS+=$(shell cd GoSamlib ; echo *.cc *.F90 ' ' | sed 's/.cc /.o /g ; s/.F90 /.o /g ; ' | tee GoSamlib.txt)
 
 PWD=$(shell pwd)
 WDNAME=$(shell basename $(PWD))
@@ -64,8 +66,9 @@ INCLUDE =$(wildcard ../include/*.h *.h include/*.h)
 
 ifeq ("$(PDF)","lhapdf")
 LHAPDF_CONFIG=lhapdf-config
-PDFPACK=lhapdfif.o
-LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF
+FJCXXFLAGS+= $(shell $(LHAPDF_CONFIG) --cxxflags)
+PDFPACK=lhapdf6if.o lhapdf6ifcc.o
+LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF -lstdc++
 ifeq  ("$(STATIC)","-static") 
 ## If LHAPDF has been compiled with gfortran and you want to link it statically, you have to include
 ## libgfortran as well. The same holds for libstdc++. 
@@ -95,6 +98,7 @@ else
 PWHGANAL=pwhg_bookhist-multi.o pwhg_analysis-dummy.o
 endif
 
+NINJAFLAGS=-DHAVE_CONFIG_H -I./GoSamlib -I./GoSamlib/ninja -O2 -fcx-limited-range
 
 %.o: %.f $(INCLUDE) | $(OBJDIR)
 	$(FF) -c -o $(OBJ)/$@ $<
@@ -102,12 +106,15 @@ endif
 %.o: %.f90 $(INCLUDE) | $(OBJDIR)
 	$(FF) -c -o $(OBJ)/$@ $<
 
+%.o: %.F90 $(INCLUDE) | $(OBJDIR)
+	$(FF) -c -o $(OBJ)/$@ $<
+
 %.o: %.c | $(OBJDIR)
 	$(CC) $(DEBUG) -c -o $(OBJ)/$@ $^ 
 
 %.o: %.cc | $(OBJDIR)
-	$(CXX) $(DEBUG) -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
-
+	$(CXX) $(DEBUG) -c -o $(OBJ)/$@ $^ $(NINJAFLAGS) $(FJCXXFLAGS)
+LIBS+=-lz
 USER=init_couplings.o init_processes.o Born_phsp.o Born.o virtual.o	\
      real.o  $(PWHGANAL)
 
@@ -123,7 +130,7 @@ PWHG=pwhg_main.o pwhg_init.o bbinit.o btilde.o lhefwrite.o		\
 	reshufflemoms.o pwhg_gosam.o                                    \
 	sigcollsoft.o sigvirtual.o  ubprojections.o                     \
 	pwhgreweight.o setlocalscales.o mint_upb.o opencount.o          \
-	validflav.o $(PDFPACK) $(USER) $(FPEOBJ)
+	validflav.o $(PDFPACK) $(USER) $(FPEOBJ) lhefread.o pwhg_io_interface.o rwl_weightlists.o rwl_setup_param_weights.o
 
 LIBDIRMG=$(OBJ)
 LINKMGLIBS =  -L$(LIBDIRMG)  -lmadgraph -lmodel -ldhelas3 
@@ -135,14 +142,14 @@ $(shell ../svnversion/svnversion.sh>/dev/null)
 
 # target to generate LHEF output
 pwhg_main:gosamlib.a $(PWHG) $(MADLIBS)
-	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LINKMGLIBS) $(LIBS) $(LIBSFASTJET) $(STATIC)  $(OBJ)/gosamlib.a -o $@
+	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LINKMGLIBS) $(LIBS) $(LIBSFASTJET) $(STATIC)  $(OBJ)/gosamlib.a -o $@ -lstdc++
 
 gosamlib.a: $(GOSAMLIBS)
 	\rm $(OBJ)/gosamlib.a ; $(PWD)/GoSamlib/compile_gosamlib.sh $(PWD)/$(OBJ)
 
 LHEF=lhef_analysis.o boostrot.o random.o cernroutines.o		\
      opencount.o powheginput.o $(PWHGANAL)	\
-     lhefread.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
+     lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
 
 # target to analyze LHEF output
 lhef_analysis:$(LHEF)
@@ -152,7 +159,7 @@ lhef_analysis:$(LHEF)
 
 # target to read event file, shower events with HERWIG + analysis
 HERWIG=main-HERWIG.o setup-HERWIG-lhef.o herwig.o boostrot.o	\
-	powheginput.o $(PWHGANAL) lhefread.o	\
+	powheginput.o $(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o	\
 	pdfdummies.o opencount.o $(FPEOBJ) 
 
 main-HERWIG-lhef: $(HERWIG)
@@ -160,7 +167,7 @@ main-HERWIG-lhef: $(HERWIG)
 
 # target to read event file, shower events with PYTHIA + analysis
 PYTHIA=main-PYTHIA.o setup-PYTHIA-lhef.o pythia.o boostrot.o powheginput.o \
-	$(PWHGANAL) lhefread.o newunit.o 	\
+	$(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o 	\
 	pwhg_analysis_driver.o random.o cernroutines.o opencount.o	\
 	$(FPEOBJ)
 
@@ -172,10 +179,10 @@ main-PYTHIA-lhef: $(PYTHIA)
 
 XFFLAGS=$(DEBUG) $(OPT)
 libdhelas3.a:
-	cd DHELAS ; make FC="$(F77)" F77="$(F77)" XFFLAGS="$(XFFLAGS)" OBJ="$(OBJ)"
+	cd DHELAS ; make -j FC="$(F77)" F77="$(F77)" XFFLAGS="$(XFFLAGS)" OBJ="$(OBJ)"
 
 libmadgraph.a:
-	cd Madlib ; make FC="$(F77)" F77="$(F77)" XFFLAGS"=$(XFFLAGS)" OBJ="$(OBJ)"
+	cd Madlib ; make -j FC="$(F77)" F77="$(F77)" XFFLAGS"=$(XFFLAGS)" OBJ="$(OBJ)"
 
 ifeq ("$(COMPILER)","gfortran")
 XFFLAGS +=-ffixed-line-length-132
@@ -184,7 +191,7 @@ XFFLAGS +=-extend-source
 endif
 
 libmodel.a:
-	cd MODEL ; make FC="$(F77)" F77="$(F77)" XFFLAGS="$(XFFLAGS)" OBJ="$(OBJ)"
+	cd MODEL ; make -j FC="$(F77)" F77="$(F77)" XFFLAGS="$(XFFLAGS)" OBJ="$(OBJ)"
 
 
 clean:
@@ -196,6 +203,10 @@ veryclean:
 	rm -f $(OBJ)/*.o $(OBJ)/*.mod $(OBJ)/*.a pwhg_main lhef_analysis main-HERWIG-lhef	\
 	main-PYTHIA-lhef *.a DHELAS/*.o Madlib/*.o MODEL/*.o GoSamlib.lst
 
+# target to generate object directory if it does not exist
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
 ##########################################################################
 
 include GoSamlib/Makefile.virt.dep
@@ -203,4 +214,5 @@ include GoSamlib/Makefile.virt.dep
 # Dependencies of SVN version stamp code
 pwhg_main.o: svn.version
 lhefwrite.o: svn.version
+
 

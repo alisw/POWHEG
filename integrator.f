@@ -209,8 +209,8 @@ c this accumulated value will not be used
             if(iret.eq.0) goto 1
 c closing call: accumulated value with correct sign
             ifun = fun(x,vol,2,1,vfun,vfun0)
-            if(.not.pwhg_isfinite(f)) goto 12
             f=vfun
+            if(.not.pwhg_isfinite(f)) goto 12
          endif
 c
          if(imode.eq.0) then
@@ -344,6 +344,13 @@ c nitmax*ncalls calls.
       integer iun
       logical iunopen
       common/cregrid/iun,iunopen
+      logical, save :: ini=.true., fixedgrid
+      real * 8 powheginput
+      if(ini) then
+         fixedgrid = powheginput('#fixedgrid').eq.1
+         ini = .false.
+      endif      
+      if(fixedgrid) return
       xacc = xacc0
       do kint=1,nint
 c xacc (xerr) already contains a factor equal to the interval size
@@ -481,6 +488,7 @@ c     the returned coordinate vector of the generated point
       include 'nlegborn.h'
       include 'pwhg_rad.h'
       include 'pwhg_flg.h'
+      include 'pwhg_rwl.h'
       parameter (nintervals=50,ndimmax=ndiminteg)
       integer fun
       real * 8 xgrid(0:nintervals,ndim),
@@ -493,12 +501,14 @@ c     the returned coordinate vector of the generated point
       logical savelogical,pwhg_isfinite
       external fun,random,pwhg_isfinite
       integer icalls,mcalls,kdim,kint,nintcurr,iret,ifirst,istep,ifun
-      integer gen_seed,gen_n1,gen_n2
-      common/cgenrand/gen_seed,gen_n1,gen_n2
 c use these to provide an estimate of the cross section while generating an event
       real * 8 sigma, sigma2, rweight
       integer isigma
       common/gencommon/sigma,sigma2,isigma
+c     this common block is to communicate to gen the outliers limits.
+c     events exceeding them will be discarded
+      real * 8 v1,v2
+      common/outliers_limits/v1,v2      
       sigma = 0
       sigma2 = 0
       isigma = 0
@@ -537,7 +547,7 @@ c this is the main hit and miss loopo
       isigma = isigma + 1
  11   continue
 c save random status for each iteration
-      call readcurrentrandom(gen_seed,gen_n1,gen_n2)
+      call readcurrentrandom(rwl_seed,rwl_n1,rwl_n2)
       rweight = 1
       do kdim=1,ndim
          nintcurr=nintervals/ifold(kdim)
@@ -594,13 +604,21 @@ c If imode=2, only the full contribution is needed
 c if ifun is nonzero the function does not support the avatar function;
 c do only one iteration
       if(ifun.ne.0) istep = 1
-      if(.not.pwhg_isfinite(vfun)) goto 10
+      if(.not.pwhg_isfinite(vfun)) goto 11
       f=f+vfun
       ifirst=1
       call nextlexi(ndim,ifold,kfold,iret)
       if(iret.eq.0) goto 5
 c get final value (x and vol not used in this call)
       ifun = fun(x,vol,2,istep,vfun,vfun0)
+      if(.not.pwhg_isfinite(vfun)) goto 11
+      if(flg_storemintupb .and. flg_storemintupb_nooutliers) then
+         if(istep == 0) then
+            if(vfun > v2) goto 11
+         else
+            if(vfun > v1) goto 11
+         endif
+      endif
       f = vfun
       if(imode.eq.2) then
          return

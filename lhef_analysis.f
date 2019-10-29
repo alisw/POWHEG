@@ -4,9 +4,11 @@
       integer j,nev
       character * 6 WHCPRG
       common/cWHCPRG/WHCPRG
+      integer iun
+      common/c_unit/iun
 c     let the analysis subroutine know that it is run by this program
       WHCPRG='LHE   '
-      call opencount(nev)
+      call opencountunit(nev,iun)
       call upinit
       call init_hist 
       do j=1,nev
@@ -47,11 +49,15 @@ c     let the analysis subroutine know that it is run by this program
       
       subroutine UPINIT
       implicit none
-      call lhefreadhdr(97)
+      integer iun
+      common/c_unit/iun
+      call lhefreadhdr(iun)
       end
 
       subroutine UPEVNT
-      call lhefreadev(97)
+      integer iun
+      common/c_unit/iun
+      call lhefreadev(iun)
       end
 
       subroutine lhuptohepevt(n)

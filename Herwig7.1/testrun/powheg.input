@@ -1,0 +1,5 @@
+maxev 100          ! (default <=0, range [1,#evts in the event file]) number of events to shower, useful when we want to shower less events then present in the event file
+#ptsqmin 0.8d0     ! (default 0.8) powheg hardest emission IR cutoff
+#scalupfac 1       ! (default 1.0) multiplies scalup for higest allowed pt value in shower evolution (modify only if you know what you are doing, scalup is not a free parameter in POWHEG)
+#ub_btilde_corr 1  ! (default 1.0) upper bound violation correction factor for btilde events
+#ub_remn_corr 1    ! (default 1.0) upper bound violation correction factor for remnant events

@@ -186,19 +186,23 @@ c come from the same splitting.
 
       recursive function rec_ident(n,ia,ib,a,ares,atags,b,bres,btags)
      1     result(result)
-c This recursive function checks if entry ia is equivalent to entry ib in the arrays a and b.
-c It properly accounts the fact that identical resonances should also have identical
-c decay products recursively.
+c     This recursive function checks if entry ia in the flavour list a
+c     is identical to entry ib in the flavour list b. If ia and ib denote
+c     resonances with decay products, it requires that also the decy products
+c     should match up to their order. It properly accounts for the fact that
+c     some decay products may be resonances in turn, by checking their
+c     equivalence recursively.
       implicit none
       logical result
       integer, intent(in)::
      1     n,ia,ib,a(n),ares(n),atags(n),b(n),bres(n),btags(n)
-c The following variables are local even if -save or -fno-automatic
-c is used in compilation, so that recursion works properly.
-c Only an explicit save statement could prevent that.
-c Notice also that arguments are passed by reference: we always
-c pass the same copy of the arrays a,ares,atags and b,bres,btags to the ident
-c function.
+c     In fortran recursive procedures local variables are local
+c     for each invocation, even if -save or -fno-automatic is used in compilation,
+c      so that recursion works properly.
+c     Only an explicit save statement could prevent that.
+c     Notice also that arguments are passed by reference: we always
+c     pass the same copy of the arrays a,ares,atags and b,bres,btags to the ident
+c     function.
       integer ndeca,ndecb
       integer bmarked(n)
       integer ka,kb
@@ -232,16 +236,19 @@ c different number of decay products: they are inequivalent
       endif
 c now ka goes through all elements that come from the decay
 c of ia.
+      bmarked = 0
       do ka=1,n
          if(ares(ka).eq.ia) then
 c For each decay product of ia, see if there is an identical (recursively!)
 c decay product of ib. If found, mark it in the array bmarked, so as not to
 c usit more than once
-            bmarked = 0
             do kb=1,n
                if( bres(kb) == ib .and. bmarked(kb) == 0) then
 c see if they are equal
                   if(rec_ident(n,ka,kb,a,ares,atags,b,bres,btags)) then
+c     the particle (son of ia) in list b that matches ka has been found;
+c     mark it to exclude it from further pairing and go to the next ka
+c     particle.
                      bmarked(kb)=1
                      exit
                   endif

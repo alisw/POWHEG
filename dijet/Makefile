@@ -42,13 +42,14 @@ OPT = -O3 #-fast
 #DEBUG= -debug -g
 endif
 
-OBJ=obj-$(COMPILER)
-
-ifeq (osx, $(findstring osx,$(ARCHITECTURE)))
-LIBGFORTRANPATH=$(shell dirname `gfortran -print-file-name=libgfortran.dylib`)
-else
-LIBGFORTRANPATH=$(shell dirname `gfortran -print-file-name=libgfortran.so`)
+# Handle c++ std library
+OS_NAME = $(shell uname -s | tr A-Z a-z)
+CPPSTDLIB = -lstdc++
+ifeq ("$(OS_NAME)","darwin")
+CPPSTDLIB = -lc++
 endif
+
+OBJ=obj-$(COMPILER)
 
 PWD=$(shell pwd)
 WDNAME=$(shell basename $(PWD))
@@ -64,7 +65,8 @@ INCLUDE =$(wildcard ../include/*.h *.h include/*.h)
 
 ifeq ("$(PDF)","lhapdf")
 LHAPDF_CONFIG=lhapdf-config
-PDFPACK=lhapdfif.o
+PDFPACK=lhapdf6if.o lhapdf6ifcc.o
+FJCXXFLAGS+= $(shell $(LHAPDF_CONFIG) --cxxflags)
 LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF
 ifeq  ("$(STATIC)","-static") 
 ## If LHAPDF has been compiled with gfortran and you want to link it statically, you have to include
@@ -73,7 +75,7 @@ ifeq  ("$(STATIC)","-static")
 ## does perform this inclusion. The path has to be set by the user. 
  LIBGFORTRANPATH=/usr/lib/gcc/x86_64-redhat-linux/4.1.2
  LIBSTDCPP=/lib64
- LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) -lstdc++
+ LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) $(CPPSTDLIB)
 endif
 LIBS+=$(LIBSLHAPDF)
 else
@@ -84,7 +86,7 @@ endif
 ifeq ("$(ANALYSIS)","default")
 ##To include Fastjet configuration uncomment the following lines. 
 FASTJET_CONFIG=$(shell which fastjet-config)
-LIBSFASTJET += $(shell $(FASTJET_CONFIG) --libs --plugins ) -lstdc++
+LIBSFASTJET += $(shell $(FASTJET_CONFIG) --libs --plugins ) $(CPPSTDLIB) 
 FJCXXFLAGS+= $(shell $(FASTJET_CONFIG) --cxxflags)
 PWHGANAL=pwhg_analysis.o pwhg_bookhist-multi.o  observables.o fastjetfortran.o
 ## Also add required Fastjet drivers to PWHGANAL (examples are reported)
@@ -100,8 +102,8 @@ endif
 	$(CC) $(DEBUG) -c -o $(OBJ)/$@ $^ 
 
 %.o: %.cc
-	$(CXX) $(DEBUG) -std=c++11 -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
-
+	$(CXX) $(DEBUG) -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
+LIBS+=-lz
 USER=init_couplings.o init_processes.o Born_phsp.o Born.o virtual.o	\
      real.o $(PWHGANAL)
 
@@ -115,15 +117,15 @@ PWHG=pwhg_main.o pwhg_init.o bbinit.o btilde.o lhefwrite.o		\
 	setstrongcoupl.o integrator.o newunit.o mwarn.o sigsoftvirt.o	\
 	sigcollsoft.o sigvirtual.o reshufflemoms.o ubprojections.o      \
 	pwhgreweight.o setlocalscales.o mint_upb.o opencount.o          \
-	validflav.o $(PDFPACK) $(USER) $(FPEOBJ)
+	validflav.o $(PDFPACK) $(USER) $(FPEOBJ) lhefread.o pwhg_io_interface.o rwl_weightlists.o rwl_setup_param_weights.o
 
 # target to generate LHEF output
 pwhg_main:$(PWHG)
-	$(CXX) $(patsubst %,$(OBJ)/%,$(PWHG)) -L$(CGAL_ROOT)/lib $(LIBS) $(LIBSFASTJET) -L$(LIBGFORTRANPATH) -lgfortran $(STATIC) -o $@
+	$(FF) $(patsubst %,$(OBJ)/%,$(PWHG)) $(LIBS) $(LIBSFASTJET) $(STATIC) -o $@
 
 LHEF=lhef_analysis.o boostrot.o random.o cernroutines.o		\
      opencount.o powheginput.o $(PWHGANAL)	\
-     lhefread.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
+     lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
 
 # target to analyze LHEF output
 lhef_analysis:$(LHEF)
@@ -133,7 +135,7 @@ lhef_analysis:$(LHEF)
 
 # target to read event file, shower events with HERWIG + analysis
 HERWIG=main-HERWIG.o setup-HERWIG-lhef.o herwig.o boostrot.o	\
-	powheginput.o $(PWHGANAL) lhefread.o	\
+	powheginput.o $(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o	\
 	pdfdummies.o opencount.o $(FPEOBJ)
 
 main-HERWIG-lhef: $(HERWIG)
@@ -141,7 +143,7 @@ main-HERWIG-lhef: $(HERWIG)
 
 # target to read event file, shower events with PYTHIA + analysis
 PYTHIA=main-PYTHIA.o setup-PYTHIA-lhef.o pythia.o boostrot.o	\
-	powheginput.o $(PWHGANAL) lhefread.o newunit.o	\
+	powheginput.o $(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o	\
 	pdfdummies.o pwhg_analysis_driver.o random.o cernroutines.o 	\
 	opencount.o $(FPEOBJ)
 
@@ -153,3 +155,4 @@ main-PYTHIA-lhef: $(PYTHIA)
 clean:
 	rm -f $(OBJ)/*.o pwhg_main lhef_analysis main-HERWIG-lhef	\
 	main-PYTHIA-lhef
+
