@@ -4,6 +4,22 @@
       integer ih
       real * 8 x,pdf(-pdf_nparton:pdf_nparton)
       include 'pwhg_st.h'
+      integer npdf
+      if(ih == 1 .and. pdf_ndns1 == -100) then
+         pdf = 1
+         return
+      elseif(ih == 2 .and. pdf_ndns2 == -100) then
+         pdf = 1
+         return
+      endif
+      if(x .ge. 1) then
+         if(x-1 .gt. 1d-4) then
+            write(*,*) 'pdfcall: warning, x=',x
+            write(*,*) 'returning pdf=0'
+         endif
+         pdf = 0
+         return
+      endif
       if(ih.eq.1) then
          call genericpdf0(pdf_ndns1,pdf_ih1,st_mufact2,x,pdf)
       elseif(ih.eq.2) then
@@ -44,6 +60,7 @@ c set to impossible values to begin with
       save ini,charmthr2,bottomthr2
       real * 8 powheginput
       external powheginput
+      real * 8 tmp
       if(ini) then
          charmthr2=powheginput('#charmthrpdf')
          bottomthr2=powheginput('#bottomthrpdf')
@@ -79,7 +96,20 @@ c set to impossible values to begin with
       oih(irec)=ih
       oxmu2(irec)=xmu2
       ox(irec)=x
-      call genericpdf(ns,ih,xmu2,x,ofx(-pdf_nparton:pdf_nparton,irec))
+      if(abs(ih) == 2) then
+c     Do the neutron or antineutron
+         call genericpdf(ns,ih/abs(ih),xmu2,x,
+     1        ofx(-pdf_nparton:pdf_nparton,irec))
+         tmp = ofx(1,irec)
+         ofx(1,irec)=ofx(2,irec)
+         ofx(2,irec)=tmp
+         tmp = ofx(-1,irec)
+         ofx(-1,irec)=ofx(-2,irec)
+         ofx(-2,irec)=tmp
+      else
+         call genericpdf(ns,ih,xmu2,x,
+     1        ofx(-pdf_nparton:pdf_nparton,irec))
+      endif
 c Flavour thresholds:
       if(xmu2.lt.bottomthr2) then
          ofx(5,irec)=0

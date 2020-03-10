@@ -10,7 +10,8 @@
       include 'pwhg_rad.h'
       include 'pwhg_flg.h'
       real * 8 powheginput
-      external powheginput
+      character * 3 whichpdfpk
+      external powheginput,whichpdfpk
       integer i1,n1,n2
       call init_flsttag
       flg_debug=.false.
@@ -113,6 +114,25 @@ c set st_bornorder to an impossible value; later on we check
 c if the user has set it. This is only used by minlo
          st_bornorder=-1000
       endif
+c     Flag to perform nnlo reweighting
+      flg_nnlops = (powheginput("#nnlops") == 1)
+      pdf_alphas_from_PDF = powheginput("#alphas_from_pdf") == 1
+      if(whichpdfpk() == 'mlm') pdf_alphas_from_PDF = .false.
+      if(powheginput("#alphas_from_lhapdf") == 1) then
+c     Here for upper compatibility
+         if(.not. whichpdfpk() == 'lha') then
+            write(*,*)' error: alphas_from_lhapdf set'//
+     1           ' to 1, but we are not using lhapdf;'
+            write(*,*) ' exiting ...'
+            call exit(-1)
+         endif
+         write(*,*) '************************'//
+     1        'WARNING **********************'
+         write(*,*) 'alphas_from_lhapdf is '//
+     1        'deprecated; use instead alphas_from_pdf'
+         pdf_alphas_from_PDF = .true.
+      endif
+         
 c     whether to correct for upper bound violations in the generation
 c     of btilde and remnant events 
       flg_ubexcess_correct = powheginput("#ubexcess_correct") ==1     
@@ -145,7 +165,7 @@ c proton and antiproton
 c neutron and antineutron
         idbmup(1) = 2112*pdf_ih1/abs(pdf_ih1)
       else
-c can be used to pass directly the pdg id of the projectilr
+c can be used to pass directly the pdg id of the projectile
          idbmup(1)=pdf_ih1
       endif
       if(abs(pdf_ih2).eq.1) then
@@ -153,7 +173,7 @@ c can be used to pass directly the pdg id of the projectilr
       elseif(abs(pdf_ih2).eq.2) then
         idbmup(2) = 2112*pdf_ih2/abs(pdf_ih2)
       else
-c can be used to pass directly the pdg id of the projectilr
+c can be used to pass directly the pdg id of the projectile
          idbmup(2)=pdf_ih2
       endif
 c pdf group; negative to use internal herwig pdf's for showering

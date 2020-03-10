@@ -21,7 +21,8 @@ c     generation of the b_tilde function
 c 3   prepare the upper bound for the generation of radiation
 c 4   generate events
       parallelstages =  powheginput('#parallelstage')
-      if(flg_newweight .and. parallelstages .gt. 0) then
+      if( (flg_newweight .or. flg_rwl_add)
+     1     .and. parallelstages .gt. 0) then
          write(*,*) ' Since we are running in reweighting mode '
          write(*,*) ' we set parallelstages to 4 '
          parallelstages = 4
@@ -539,7 +540,7 @@ c ********** CALL to mint for btilde
 c **********
       call regridplotclose
       if(iteration.ge.1) then
-         call storegridinfo('btl-'//trim(tag),xgrid0,xint,
+         call storegridinfo('btl-'//trim(tag),xgrid0,xint,errbtl,
      1        xacc,nhits,ndiminteg)
       endif
       flg_withnegweights=savewithnegweights
@@ -572,7 +573,7 @@ c ********** CALL to mint for remnants
 c **********
          call regridplotclose
          if(iteration.ge.1) then
-            call storegridinfo('rmn-'//trim(tag),xgrid0rm,xintrm,
+            call storegridinfo('rmn-'//trim(tag),xgrid0rm,xintrm,errrm,
      1           xaccrm,nhitsrm,ndiminteg)
          endif
       endif
@@ -614,6 +615,10 @@ c         close(iun)
       real * 8 xx(ndiminteg)      
       real * 8 btilde
       external btilde
+c     this common block is to communicate to gen the outliers limits.
+c     events exceeding them will be discarded
+      real * 8 v1,v2
+      common/outliers_limits/v1,v2
 c use these to provide an estimate of the cross section while generating an event
       real * 8 sigma, sigma2
       integer isigma
@@ -624,6 +629,8 @@ c use these to provide an estimate of the cross section while generating an even
          gen_isigma = 0
          gen_totev  = 0
       endif
+c     this sets the limits previously stored for btilde in v1,v2
+      call store_outliers_limit('get','btildeupb',v1,v2)
       call gen(btilde,ndiminteg,xgrid,ymax,ymaxrat,xmmm,ifold,1,
      1     mcalls,icalls,xx)
       gen_sigma  = gen_sigma  + sigma
@@ -660,6 +667,10 @@ c use these to provide an estimate of the cross section while generating an even
       real * 8 sigma, sigma2
       integer isigma
       common/gencommon/sigma,sigma2,isigma
+c     this common block is to communicate to gen the outliers limits.
+c     events exceeding them will be discarded
+      real * 8 v1,v2
+      common/outliers_limits/v1,v2
       if(mcalls == 0) then
          gen_sigmarm  = 0
          gen_sigma2rm = 0
@@ -669,6 +680,8 @@ c use these to provide an estimate of the cross section while generating an even
 c communicate file to load upper bound data
       savelogical=flg_fastbtlbound
       flg_fastbtlbound=.false.
+c     this sets the limits previously stored for the remnants in v1,v2
+      call store_outliers_limit('get','remnupb',v1,v2)
       call gen(sigremnant,ndiminteg,xgridrm,ymaxrm,ymaxratrm,
      1    xmmmrm,ifoldrm,1,mcalls,icalls,xx)
       flg_fastbtlbound=savelogical
@@ -701,6 +714,7 @@ c communicate file to load upper bound data
       include 'pwhg_pdf.h'
       include 'pwhg_rad.h'
       include 'pwhg_rnd.h'
+      include 'pwhg_flg.h'
       real * 8 xgrid(0:50,ndiminteg),ymax(50,ndiminteg),
      1     ymaxrat(50,ndiminteg),xgridrm(0:50,ndiminteg),
      2     ymaxrm(50,ndiminteg),ymaxratrm(50,ndiminteg)
@@ -712,6 +726,7 @@ c communicate file to load upper bound data
       integer lprefix
       common/cpwgprefix/pwgprefix,lprefix
       integer j,k,iun
+      real * 8 v1,v2
       call newunit(iun)
       if(rnd_cwhichseed.eq.'none') then
          open(unit=iun,file=pwgprefix(1:lprefix)//gridtag//'.dat',
@@ -740,6 +755,14 @@ c communicate file to load upper bound data
      6     rad_totbtlgen,rad_etotbtlgen,
      7     rad_totgen,rad_etotgen,
      8     rad_tot,rad_etot
+      if(gridtag == 'fullgrid' .and. flg_storemintupb
+     1     .and. flg_storemintupb_nooutliers) then
+c outliers limits are computed at stage 3, and should be passed to stage 4         
+         call store_outliers_limit('get','btildeupb',v1,v2)
+         write(iun) v1,v2
+         call store_outliers_limit('get','remnupb',v1,v2)
+         write(iun) v1,v2
+      endif
       close(iun)
       end
 
@@ -753,6 +776,7 @@ c communicate file to load upper bound data
       include 'pwhg_rad.h'
       include 'pwhg_rnd.h'
       include 'pwhg_par.h'
+      include 'pwhg_flg.h'
       real * 8 xgrid(0:50,ndiminteg),ymax(50,ndiminteg),
      1     ymaxrat(50,ndiminteg),xgridrm(0:50,ndiminteg),
      2     ymaxrm(50,ndiminteg),ymaxratrm(50,ndiminteg)
@@ -783,6 +807,7 @@ c
       real * 8 rjfound, rncall2
       real * 8 powheginput
       external powheginput
+      real * 8 v1,v2
       if(powheginput('use-old-grid').eq.0) then
          iret=1
          return
@@ -865,8 +890,19 @@ c random seeds
      1      .or.ios.ne.0)
      2        goto 998
          read(iun,iostat=ios) ((tot(k,j),k=1,2),j=1,8)
+c     outliers limits are red from the fullgrid file, and stored in the store_outliers_limit
+c     routine. Repeated calls with 'put' have no effects, so no worry if this is done for
+c     each loaded file.
+         if(gridtag == 'fullgrid' .and. flg_storemintupb
+     1        .and. flg_storemintupb_nooutliers) then
+            read(iun) v1,v2
+            call store_outliers_limit('put','btildeupb',v1,v2)
+            read(iun) v1,v2
+            call store_outliers_limit('put','remnupb',v1,v2)
+         endif
          if(check_bad_st2) then
-            totarr(:,jfile)=tot(:,1)
+c     tot(:,7) corresponds to rad_totgen, sum of btl and rmn (absolute value) results.
+            totarr(:,jfile)=tot(:,7)
          endif
          if(ios.ne.0) goto 998
          jfound=jfound+1
@@ -973,6 +1009,7 @@ c check that the different runs are more or less consistent
       iret=-1
       end
 
+
       subroutine  check_stat_consistency(nentries,res,goodentries,iret)
       implicit none
       integer nentries,iret
@@ -980,57 +1017,71 @@ c check that the different runs are more or less consistent
       double precision res(2,nentries)
       logical goodentries(nentries)
       double precision average,weight,tmpav,tmpweight
-      double precision tmp2(2),ow,oav
-      integer nonz,j,k,itmp
-      logical :: ex=.true.
-c DEBUG
+      double precision tmp,tmp2(2),ow,oav
+      integer nonz,j,k,itmp,ij,ijp1
+      logical :: ex
+      logical :: pwhg_isfinite
+c     DEBUG
 c      res(1,7) = 3.7
 c      res(2,7) = 1
 c      res(1,5) = 3.7
 c      res(2,5) = 1
 c      res(1,3) = 3.7
 c      res(2,3) = 1
-c end DEBUG
+c     end DEBUG
       do j=1,nentries
          indices(j)=j
       enddo
-c bubblesort
+c     bubblesort
+      ex = .true.
       do while(ex)
          ex = .false.
-         do j=1,nentries-1
-c swap in growing order, but put zeros at the end
-            if((res(2,j+1).ne.0.and.res(2,j+1).lt.res(2,j)).or.
-     1        (res(2,j+1).ne.0.and.res(2,j).eq.0)) then
-               tmp2 = res(:,j)
-               res(:,j) = res(:,j+1)
-               res(:,j+1) = tmp2
-               itmp = indices(j)
-               indices(j) = indices(j+1)
-               indices(j+1) = itmp
+         do j=1,nentries-1 
+c     swap in growing order, but put zeros and NaN's at the end.
+c     when to swap
+            ij = indices(j)
+            ijp1 = indices(j+1)
+            if(.not. goodentries(ijp1)) cycle
+            if(res(2,ijp1) == 0) cycle
+            if(.not. goodentries(ij) .or. res(2,ij) == 0
+     1       .or. res(2,ij)>res(2,ijp1) ) then
+               indices(j) = ijp1
+               indices(j+1) = ij
                ex = .true.
             endif
          enddo
       enddo
       do j=1,nentries
-         if(res(2,j).eq.0) then
+         ij = indices(j)
+         tmp = res(2,ij)
+         if(.not. goodentries(ij) .or. tmp == 0 .or.
+     1    .not. pwhg_isfinite(tmp) ) then
             nonz = j - 1
             exit
          endif
       enddo
-c Compute the average. Neglect zero entries.
+c     Compute the average. Neglect zero, NaNs, infs, etc.
+      write(*,*) '************ sorted, unsorted ************'
+      do j=1,nonz
+         ij = indices(j)
+         write(*,*) res(2,ij), res(2,j)
+      enddo
+      write(*,*) '******** end sorted, unsorted ************'
+ 
       average = 0
       weight = 0
       do j=1,nonz
-         if(res(1,j).ne.0) then
+         ij = indices(j)
+         if(res(1,ij).ne.0) then
             oav = average
             ow = weight
-            average = (average*(j-1) + res(1,j))/j
-            weight = sqrt((weight*(j-1))**2 + res(2,j)**2)/j
+            average = (average*(j-1) + res(1,ij))/j
+            weight = sqrt((weight*(j-1))**2 + res(2,ij)**2)/j
             if(j.gt.1) then
-c               write(*,*) ' old,new av.',oav,average
-c               write(*,*) ' old,new err.',ow,weight
-c               write(*,*) ' deviation:',abs(oav-average)/ow
-c after half of the runs
+               write(*,*) ' old,new av.',oav,average
+               write(*,*) ' old,new err.',ow,weight
+               write(*,*) ' deviation:',abs(oav-average)/ow
+c     after half of the runs
                if(abs(oav-average)/ow.gt.10) then
                   write(*,*) ' check_stat_consistency:'
                   write(*,*)
@@ -1046,7 +1097,7 @@ c after half of the runs
                      call exit(-1)
                   else
                      write(*,*)
-     1               ' The fraction of inconsistent file is < 10%'
+     1                    ' The fraction of inconsistent file is < 10%'
                      write(*,*) ' We discard the following files:'
                      write(*,*) (indices(k),k=j,nonz)
                      write(*,*) ' and reload the others'                     
@@ -1054,13 +1105,19 @@ c after half of the runs
                         goodentries(indices(k)) = .false.
                      enddo
                      iret = -1
-                     return
+                     goto 999
                   endif
                endif
             endif
          endif
       enddo
       iret = 0
+ 999  continue
+      write(*,'(a)') '********** Check_stat_consistency ******'
+      do  j=1,nentries
+         write(*,*) j, res(1,j),res(2,j),goodentries(j)
+      enddo
+      write(*,'(a)') '********** end Check_stat_consistency ******'
       end
 
 
@@ -1191,7 +1248,7 @@ c remember, tags look like '-1', '-2', etc.
       integer iret
       real * 8 xacc(0:nintervals,ndimmax)
       integer nhits(1:nintervals,ndimmax)
-      real * 8 xacc0(0:nintervals,ndimmax),tmp
+      real * 8 xacc0(0:nintervals,ndimmax),tmp,tmper
       integer nhits0(1:nintervals,ndimmax),ndim0
       character * 4 chseed
       character * 20 pwgprefix
@@ -1202,7 +1259,11 @@ c remember, tags look like '-1', '-2', etc.
       integer j,k,iun,ios,kdim
       logical filefound,lpresent
       integer nfiles,jfile,jfound
-
+      logical :: check_bad_st1
+      integer kcheck_bad
+      double precision, allocatable :: totarr(:,:)
+      logical, allocatable :: goodentries(:)
+      double precision powheginput
 c first probe if there are files to load
       nfiles=par_maxseeds
       do jfile=1,nfiles
@@ -1225,50 +1286,99 @@ c first probe if there are files to load
          iret = -1
          return
       endif
+c     
+      check_bad_st1 = powheginput("#check_bad_st1") == 1
+      if(check_bad_st1) then
+         allocate(totarr(2,nfiles),goodentries(nfiles))
+         goodentries = .true.
+         totarr = 0
+      endif
 
-      nfiles=par_maxseeds
-      filefound=.false.
-      jfound=0
-      xacc(:,1:ndiminteg)=0
-      nhits(:,1:ndiminteg)=0
-      ans=0
-      do jfile=1,nfiles
-         write(chseed,'(i4)') jfile
-         do k=1,4
-            if(chseed(k:k).eq.' ') chseed(k:k)='0'
+c     This loop will be exited if check_bad yields a negative result,
+c     otherwise it is done twice
+      do kcheck_bad=1,2
+         nfiles=par_maxseeds
+         filefound=.false.
+         jfound=0
+         xacc(:,1:ndiminteg)=0
+         nhits(:,1:ndiminteg)=0
+         ans=0
+         do jfile=1,nfiles
+c     file goodentries may note be allocated; we need an if bracket
+            if(check_bad_st1) then
+               if(.not. goodentries(jfile)) then
+                  cycle
+               endif
+            endif
+            write(chseed,'(i4)') jfile
+            do k=1,4
+               if(chseed(k:k).eq.' ') chseed(k:k)='0'
+            enddo
+            file = mergelabels(pwgprefix(1:lprefix)//'gridinfo',
+     1           storelabel,chseed,'.dat')
+            inquire(file= file,exist=lpresent)
+            if(.not.lpresent) then
+               if(check_bad_st1) then
+c     file not there; exclude it from checks also
+                  goodentries(jfile) = .false.
+               endif
+               cycle
+            endif 
+            call newunit(iun)
+            open(unit=iun,file= file,
+     2           form='unformatted',status='old',iostat=ios)
+            if(ios.ne.0) then
+               iret=-1
+               return
+            else
+               write(*,*) ' Opened ', file
+            endif
+            filefound=.true.
+            jfound=jfound+1
+            read(iun,iostat=ios) ndim0
+            if(ios.ne.0.or.ndim0.ne.ndiminteg) goto 111
+            read(iun,iostat=ios) tmp
+            ans = ans + tmp
+            if(ios.ne.0) goto 111
+            read(iun,iostat=ios) xgrid(0:nintervals,1:ndiminteg)
+            if(ios.ne.0) goto 111
+            read(iun,iostat=ios) xacc0(0:nintervals,1:ndiminteg)
+            if(ios.ne.0) goto 111
+            xacc(:,1:ndiminteg) =
+     1           xacc(:,1:ndiminteg) + xacc0(:,1:ndiminteg)
+            read(iun,iostat=ios) nhits0(1:nintervals,1:ndiminteg)
+            if(ios.ne.0) goto 111
+            nhits(:,1:ndiminteg) =
+     1           nhits(:,1:ndiminteg) + nhits0(:,1:ndiminteg)
+            if(check_bad_st1) then
+               read(iun,iostat=ios) tmper
+               if(ios /= 0) then
+                  write(*,*) ' loadgridinfo: you are probably '//
+     1             'using gridinfo files generated with '//
+     2             'an SVN revision < 3600.',
+     3             'Either regenerate them, or generate one more '//
+     4                 ' xgriditeration/'
+                  write(*,*) ' exiting ...'
+                  call pwhg_exit(-1)
+               endif
+               totarr(1,jfile) = tmp
+               totarr(2,jfile) = tmper
+            endif
+            close(iun)
          enddo
-         file = mergelabels(pwgprefix(1:lprefix)//'gridinfo',
-     1        storelabel,chseed,'.dat')
-         inquire(file= file,exist=lpresent)
-         if(.not.lpresent) cycle
-         call newunit(iun)
-         open(unit=iun,file= file,
-     2        form='unformatted',status='old',iostat=ios)
-         if(ios.ne.0) then
-            iret=-1
-            return
+         if(jfound>1 .and. check_bad_st1 .and. kcheck_bad ==1) then
+            call check_stat_consistency(nfiles,totarr,goodentries,iret)
+            if(iret == 0) then
+               exit
+            endif
          else
-            write(*,*) ' Opened ', file
+            exit
          endif
-         filefound=.true.
-         jfound=jfound+1
-         read(iun,iostat=ios) ndim0
-         if(ios.ne.0.or.ndim0.ne.ndiminteg) goto 111
-         read(iun,iostat=ios) tmp
-         ans = ans + tmp
-         if(ios.ne.0) goto 111
-         read(iun,iostat=ios) xgrid(0:nintervals,1:ndiminteg)
-         if(ios.ne.0) goto 111
-         read(iun,iostat=ios) xacc0(0:nintervals,1:ndiminteg)
-         if(ios.ne.0) goto 111
-         xacc(:,1:ndiminteg) =
-     1        xacc(:,1:ndiminteg) + xacc0(:,1:ndiminteg)
-         read(iun,iostat=ios) nhits0(1:nintervals,1:ndiminteg)
-         if(ios.ne.0) goto 111
-         nhits(:,1:ndiminteg) =
-     1        nhits(:,1:ndiminteg) + nhits0(:,1:ndiminteg)
-         close(iun)
       enddo
+      if(check_bad_st1) then
+         deallocate(goodentries,totarr)
+      endif
+
 c      write(*,*) ' loadgridinfo: found ',jfound,
 c     1     ' files with grid information'
       if(filefound) then
@@ -1278,7 +1388,7 @@ c     1     ' files with grid information'
          else
             call regridplotopen(pwgprefix(1:lprefix)//'-'//
      1           rnd_cwhichseed//'-'//storelabel(1:3)//'grid.top')
-         endif
+          endif
          ans = ans/jfound
          do kdim=1,ndiminteg
             call regrid(xacc(0,kdim),xgrid(0,kdim),
@@ -1297,7 +1407,12 @@ c     1     ' files with grid information'
       end
 
 
-      subroutine storegridinfo(storelabel,xgrid,xint,xacc,nhits,ndim)
+
+
+      
+
+      subroutine storegridinfo(storelabel,xgrid,xint,
+     1 xerr,xacc,nhits,ndim)
 c stores accumulated results and number of hits in gridinfo files
       implicit none
       include 'nlegborn.h'
@@ -1305,7 +1420,7 @@ c stores accumulated results and number of hits in gridinfo files
       character *(*) storelabel
       integer nintervals,ndimmax
       parameter (nintervals=50,ndimmax=ndiminteg)
-      real * 8 xgrid(0:nintervals,*),xint
+      real * 8 xgrid(0:nintervals,*),xint,xerr
       real * 8 xacc(0:nintervals,*)
       integer nhits(1:nintervals,*),ndim
       character * 20 pwgprefix
@@ -1323,6 +1438,9 @@ c stores accumulated results and number of hits in gridinfo files
       write(iun) xgrid(0:nintervals,1:ndim)
       write(iun) xacc(0:nintervals,1:ndim)
       write(iun) nhits(1:nintervals,1:ndim)
+c     error on integration stored last to avoid breaking
+c     backward compatibility too much
+      write(iun) xerr
       close(iun)
       end
 

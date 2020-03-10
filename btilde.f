@@ -1,12 +1,13 @@
       function btilde(xx,www0,ifirst,imode,
      1     retval,retval0)
 c retval is the function return value
-c retvavl0 is an 'avatar' function the has similar value, but is much
+c retval0 is an 'avatar' function the has similar value, but is much
 c easier to compute (i.e. the Born term in this case)
-c imode = 0 compute retval0 only.
-c imode = 1 compute retval, retval0
+c imode = 0 compute only the Born contribution (retval = retval0 in this case)
+c imode = 1 compute everything
 c return value: 0: success; 1: retval0 was not computed
-c                 (this function does not support an avatar function)
+c     (for functions that do not support an avatar function)
+c     here we always return 0.
       implicit none
       include 'nlegborn.h'
       include 'pwhg_flst.h'

@@ -1,7 +1,7 @@
 c -*- Fortran -*-
 
       integer maxnum,maxstrings,maxlin,maxkey
-      parameter (maxnum=150,maxstrings=20,maxlin=100,maxkey=20)
+      parameter (maxnum=250,maxstrings=20,maxlin=100,maxkey=20)
       integer pwin_numvalues,pwin_numstrings
       character * (maxkey) pwin_keywords(maxnum)
       real * 8 pwin_values(maxnum)

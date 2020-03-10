@@ -530,6 +530,10 @@ c Factorization scale (relay on 5 being the light parton)
             ih(k)=1
          elseif(idbmup(k).eq.-2212) then
             ih(k)=-1
+         elseif(idbmup(k).eq.2112) then
+            ih(k)=2
+         elseif(idbmup(k).eq.-2112) then
+            ih(k)=-2
          else
             write(*,*) ' pdfcorr: cannot handle incoming hadrons',
      #           idbmup(1),idbmup(2)
@@ -546,10 +550,10 @@ c parton types, from pdg to generic pdf
       enddo
       r=1
       do k=1,2
-         call genericpdf(ndns(k),ih(k),mufc2,x(k),fx)
+         call genericpdf0(ndns(k),ih(k),mufc2,x(k),fx)
          if(fx(ipart(k)).ne.0) then
             r=r/fx(ipart(k))
-            call genericpdf(ndns(k),ih(k),mufc2,xc(k),fx)
+            call genericpdf0(ndns(k),ih(k),mufc2,xc(k),fx)
             r=r*fx(ipart(k))
          endif
       enddo

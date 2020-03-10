@@ -303,6 +303,7 @@ c Now set all equivalent amplitudes equal to j
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       include 'pwhg_kn.h'
+      include 'pwhg_flg.h'
       include 'pwhg_rad.h'
       real * 8 ptsq,born,sig,xnorm
       real * 8 histnorms(nlegborn-1,maxprocborn,100)
@@ -321,10 +322,20 @@ ccccccccccccccccccccccccccccccccc
       include 'pwhg_pdf.h'
       include 'pwhg_br.h'
       real * 8 pdf1(-pdf_nparton:pdf_nparton),
-     1         pdf2(-pdf_nparton:pdf_nparton)
+     1     pdf2(-pdf_nparton:pdf_nparton)
+      real*8 ptsqmin
+      real *8 kt2minqed
+      common/showerqed/kt2minqed
 cccccccccccccccccccccccccccccccc
       ptsq=pwhg_pt2()
-      if(ptsq.gt.rad_ptsqmin) then
+c.....mod
+      if(flg_em_rad) then
+         ptsqmin = kt2minqed
+      else
+         ptsqmin = rad_ptsqmin
+      endif
+c.....mod         
+      if(ptsq.gt.ptsqmin) then
          call set_rad_scales(ptsq)
          if(.not.refuse_pdf()) then
             call sigborn_rad(born)
@@ -372,7 +383,7 @@ cccccccccccccccccccccccccccccccc
                      read(*,*) kn_csitilde, kn_y
                      call gen_real_phsp_isr_rad0
                      ptsq=pwhg_pt2()
-                     if(ptsq.gt.rad_ptsqmin) then
+                     if(ptsq.gt.ptsqmin) then
                         call set_rad_scales(ptsq)
                         call sigreal_rad(sig)
                         sig=sig*kn_jacreal
@@ -398,7 +409,7 @@ cccccccccccccccccccccccccccccccc
       endif
 c     fill the norm array
       iy=abs(kn_y)*rad_nynorms+1
-      icsi=log(1/(1-kn_csi))/log(kn_sbeams/kn_minmass**2)
+      icsi=log(1/(1-kn_csi))/log(kn_sbeams/max(1d0,kn_minmass**2))
      1    *rad_ncsinorms+1
 c
       if(iy.lt.1) iy=1

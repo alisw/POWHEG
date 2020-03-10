@@ -124,13 +124,31 @@ c     q qbar annihilation
 
       subroutine finalize_lh
       implicit none
+      logical, save:: ini=.true., nospincorr
+      real * 8 powheginput
 c This should not be here, or perhaps finalize_lh should be
 c called tail_lh.
+      if(ini) then
+         nospincorr = powheginput("#nospincorr").eq.1
+      endif
+
 c In case of a real event, replace
 c all colours with those computed using the planar approximation
 c to the real cross section
       call realcolour_lh
       call ttdecay
+
+      if(nospincorr) then
+c perform a random rotation of the t (tbar) decay products in the
+c t (tbar) rest frame
+         if(ini) then
+            write(*,*) ' rotating randomly the t and tbar systems'
+            ini = .false.
+         endif
+         call randomrotate(3)
+         call randomrotate(4)
+      endif
+
       call lhefinitemasses
       END
 
@@ -738,3 +756,128 @@ c
          ipick=6
       endif
       end
+
+
+
+c     Random rotation subroutines
+      subroutine randomrotate(ind)
+      implicit none
+      integer ind
+      include 'LesHouches.h'
+      real * 8 pres(5),vec(3),beta,r(3,3)
+      logical sonof
+      integer j
+      beta=sqrt(pup(1,ind)**2+pup(2,ind)**2+pup(3,ind)**2)/pup(4,ind)
+      vec(1)=pup(1,ind)/(beta*pup(4,ind))
+      vec(2)=pup(2,ind)/(beta*pup(4,ind))
+      vec(3)=pup(3,ind)/(beta*pup(4,ind))
+      call uniformrot(r)
+      do j=3,nup
+         if(sonof(ind,j)) then
+            call mboost5(1,vec,-beta,pup(:,j),pup(:,j))
+            call matrixmultvec(r,pup(1:3,j))
+            call mboost5(1,vec,beta,pup(:,j),pup(:,j))
+         endif
+      enddo
+      end
+
+      function sonof(m,k)
+      implicit none
+      logical sonof
+      integer m,k
+      include  'LesHouches.h'
+      integer j,kcurr
+      integer ngenerations
+      parameter (ngenerations=4)
+      kcurr=mothup(1,k)
+      do j=1,ngenerations
+         if(kcurr.eq.m) then
+            sonof = .true.
+            return
+         endif
+         kcurr = mothup(1,kcurr)
+         if(kcurr.eq.0) then
+            sonof = .false.
+            return
+         endif
+      enddo
+      sonof=.false.
+      end
+
+
+      subroutine mboost5(m,vec,beta,vin,vout)
+c     boosts the m vectors vin(4,m) into the vectors vout(4,m) (that can
+c     be the same) in the direction of vec(3) (|vec|=1) with velocity
+c     beta.  Lorents convention: (t,x,y,z).
+      implicit none
+      integer m
+      real * 8 vec(3),beta,vin(5,m),vout(5,m)
+      real * 8 betav,gamma
+      real * 8 vdotb
+      integer ipart,idim
+      gamma=1/sqrt(1-beta**2)
+      do ipart=1,m
+         vdotb=vin(1,ipart)*vec(1)
+     #         +vin(2,ipart)*vec(2)+vin(3,ipart)*vec(3)
+         do idim=1,3
+            vout(idim,ipart)=vin(idim,ipart)
+     #           +vec(idim)*((gamma-1)*vdotb
+     #           +gamma*beta*vin(4,ipart))
+         enddo
+         vout(4,ipart)=gamma*(vin(4,ipart)+vdotb*beta)
+         vout(5,ipart)=vin(5,ipart)
+      enddo
+      end
+
+
+      subroutine matrixmultvec(r,v)
+      implicit none
+      real * 8 r(3,3),v(3),res(3)
+      integer j
+      do j=1,3
+         res(j)=r(j,1)*v(1)+r(j,2)*v(2)+r(j,3)*v(3)
+      enddo
+      v = res
+      end
+
+
+      subroutine uniformrot(R)
+      implicit none
+c     Generate a uniformly distributed rotation
+      real * 8 r(3,3)
+      real * 8 pi
+      parameter (pi=3.141592653589793d0)
+      real * 8 costh,sinth,phi,gamma,sing,cosg,norm
+      real * 8 random
+      external random
+      costh=2*random()-1
+      sinth=sqrt(abs(1-costh**2))
+      phi=2*pi*random()
+c First axis in random direction
+      r(1,1)=costh
+      r(2,1)=sinth*sin(phi)
+      r(3,1)=sinth*cos(phi)
+c now pick a vector orthogonal to the first axis
+      if(costh.gt.0.5d0) then
+         norm=sqrt(r(1,1)**2+r(2,1)**2)
+         r(1,2)=r(2,1)/norm
+         r(2,2)=-r(1,1)/norm
+         r(3,2)=0
+      else
+         norm=sqrt(r(2,1)**2+r(3,1)**2)
+         r(1,2)=0
+         r(2,2)=r(3,1)/norm
+         r(3,2)=-r(2,1)/norm
+      endif
+c Now totate r(:,2) around r(:,1) of an arbitrary angle
+      gamma = 2*pi * random()
+      sing = sin(gamma)
+      cosg = cos(gamma)
+      call mrotate(r(:,1),sing,cosg,r(:,2))
+c Last axis is cross product of 1 and 2
+      r(1,3)=r(2,1)*r(3,2)-r(3,1)*r(2,2)
+      r(2,3)=r(3,1)*r(1,2)-r(1,1)*r(3,2)
+      r(3,3)=r(1,1)*r(2,2)-r(2,1)*r(1,2)
+      end
+
+      

@@ -203,9 +203,37 @@ c     to avoid divergent integral (25 is an ad hoc value)
       include 'pwhg_flst.h'
       include 'pwhg_kn.h'
       include 'pwhg_dbg.h'
+       include 'pwhg_rnd.h'
+       include 'pwhg_flg.h'
+       include 'pwhg_par.h'
+      real * 8 powheginput
       external sigreal_btl,soft,collfsr,softcollfsr, collisrp,
-     $     softcollisrp,collisrm,softcollisrm
+     $     softcollisrp,collisrm,softcollisrm,powheginput
+      real * 8 tinyforlims, save_isrtinycsi,save_isrtinyy,
+     1     save_fsrtinycsi,save_fsrtinyy
+      logical savewithdamp
+      savewithdamp = flg_withdamp
+      flg_withdamp = .false.
       call randomsave
+      if(rnd_cwhichseed /= 'none') then
+         call setrandom(rnd_initialseed,rnd_i1,rnd_i2)
+      endif
+      if(powheginput("#chklimseed") .gt. 0) then
+         call setrandom(nint(powheginput("#chklimseed")),0,0)
+      endif
+      tinyForLims=powheginput("#tinyForLims")
+      if(tinyForLims .ge. 0) then
+         save_isrtinycsi = par_isrtinycsi
+         save_isrtinyy   = par_isrtinyy  
+         save_fsrtinycsi = par_fsrtinycsi
+         save_fsrtinyy   = par_fsrtinyy  
+         
+         par_isrtinycsi = tinyforlims 
+         par_isrtinyy   = tinyforlims 
+         par_fsrtinycsi = tinyforlims 
+         par_fsrtinyy   = tinyforlims 
+      endif
+
       if(dbg_softtest) then
          write(iun,*) '******************************************'   
          write(iun,*) '           CHECK  SOFT LIMITS             '     
@@ -289,6 +317,13 @@ c            call randomrestore
          enddo
       endif
       call randomrestore
+      flg_withdamp = savewithdamp
+      if(tinyForLims .ge. 0) then
+         par_isrtinycsi = save_isrtinycsi
+         par_isrtinyy   = save_isrtinyy  
+         par_fsrtinycsi = save_fsrtinycsi
+         par_fsrtinyy   = save_fsrtinyy  
+      endif
       end
 
       subroutine checkborn(iun)
@@ -381,23 +416,33 @@ c are consistent with total Born
       logical ident(maxalr)
       real * 8 random,dotp
       external random,dotp
-      logical valid_emitter,iszero,isnonzero,isequal
-      external valid_emitter
+      logical valid_emitter,iszero,isnonzero,isequal,bad_born_kin,
+     1     bad_real_kin
+      external valid_emitter,bad_real_kin
+      real * 8 tolpar
+c     The tolpar parameter sets the minimum in the ratio (transverse momentum)/(total energy)
+c     for a kinematic configuration to be accepted for collinear tests. It is started
+c     at 1, and for each failed configuration it is reduced by a factor 0.95 until an
+c     acceptable configuration is found
+      tolpar = 1
+ 1    continue
+      tolpar = tolpar * 0.95d0
       do j=1,ndiminteg-3
          xborn(j)=random()
       enddo
       call gen_born_phsp(xborn)
+      if(bad_born_kin(tolpar)) goto 1
       call setscalesbtilde
       call allborn
       call checkborn(iun)
 c      write(iun,*)' mass',sqrt(2*dotp(kn_pborn(0,3),kn_pborn(0,4)))
-      do j=1,3
+      tolpar = 1
+ 20   do j=1,3
          xrad(j)=random()
       enddo
+      tolpar = tolpar * 0.95d0
 c Check soft limits
       if(valid_emitter(kn_emitter)) then
-         write(iun,*) ' Random Born variables ====> ',xborn
-          write(iun,*) ' Random radiation variables ====> ',xrad
           do jexp=1,nexp
             xrad(1)=10d0**(-jexp)
             if(kn_emitter.gt.2) then
@@ -407,6 +452,11 @@ c Check soft limits
                call gen_real_phsp_isr (xrad,jac_over_csi,jac_over_csi_p,
      $              jac_over_csi_m,jac_over_csi_soft)
             endif
+            if(jexp == 1) then
+               if(bad_real_kin(tolpar)) goto 20
+               write(iun,*) ' Random Born variables ====> ',xborn
+               write(iun,*) ' Random radiation variables ====> ',xrad
+            endif
             write(iun,*) '### Check soft',xrad(1)
             call sig(rr(1,jexp))
             call sigs(rs(1,jexp))
@@ -415,47 +465,45 @@ c Check soft limits
             ident(alr)=.false.
          enddo
          do alr=1,flst_nalr
+            if(kn_emitter /= flst_emitter(alr)) cycle
 c only radiated gluons or photons
             if(flst_alr(nlegreal,alr).ne.0 .and.
      1         flst_alr(nlegreal,alr).ne.22  ) cycle
             if(ident(alr)) cycle
-c     if one rr is zero, all others must be zero
-            iszero=.false.
-            isnonzero=.false.
-            do jexp=1,nexp
-c               if(rs(alr,jexp).ne.0) isnonzero=.true.
-c               if(rs(alr,jexp).eq.0) iszero=.true.
-               if(rr(alr,jexp).ne.0) isnonzero=.true.
-               if(rr(alr,jexp).eq.0) iszero=.true.
+            fff = '(a,1x,i3,1x,a, 20(1x,i3),a,a,a)'
+            write(fff(15:17),'(i3)') nlegreal
+            write(iun,fff)
+     $           ' emitter ',kn_emitter, ', process ',
+     $           (flst_alr(j,alr),j=1,nlegreal) !,', ',label,':'
+            do alrp=alr+1,flst_nalr
+               if(kn_emitter /= flst_emitter(alrp)) cycle
+               isequal=.true.
+               do jexp=1,nexp
+                  if(rr(alr,jexp).ne.rr(alrp,jexp).or. rs(alr,jexp)
+     $                 .ne.rs(alrp,jexp)) isequal=.false.
+               enddo
+               if(isequal) then
+                  write(iun,'(2a,i2,a,20(1x,i3))') label,' emitter ',
+     1                 flst_emitter(alrp),', process ',
+     2             (flst_alr(j,alrp),j=1,nlegreal)
+                  write(iun,'(2a,i2,a,20(1x,i3))') ' ==  ',' emitter ',
+     1                 flst_emitter(alr),', process ',
+     2             (flst_alr(j,alr),j=1,nlegreal)
+                  ident(alrp)=.true.
+               endif
             enddo
-            if(iszero.and.isnonzero) then
-               write(iun,*) ' some vanish and some do not'
-            endif
-            if(isnonzero.and..not.iszero) then
-               fff = '(a,1x,i3,1x,a, 20(1x,i3),a,a,a)'
-               write(fff(15:17),'(i3)') nlegreal
-               write(iun,fff)
-     $              ' emitter ',kn_emitter, ', process ',
-     $              (flst_alr(j,alr),j=1,nlegreal)!,', ',label,':'
-               do alrp=alr+1,flst_nalr
-                  isequal=.true.
-                  do jexp=1,nexp
-                     if(rr(alr,jexp).ne.rr(alrp,jexp).or. rs(alr,jexp)
-     $                    .ne.rs(alrp,jexp)) isequal=.false.
-                  enddo
-                  if(isequal) then
-c                     write(iun,'(a,1x,i3,1x,a,20(1x,i3))')
-c     $                    ' emitter ',kn_emitter, ', process ',
-c     $                    (flst_alr(j,alrp),j=1,nlegreal) !,', ',label,':'
-                     ident(alrp)=.true.
-                  endif
-               enddo
-               do jexp=2,nexp
-                  call setwarnflag
-     1           (abs(rs(alr,jexp)/rr(alr,jexp)-1),jexp,2,flag)
-                  write(iun,*) rs(alr,jexp)/rr(alr,jexp),flag
-               enddo
-            endif
+            do jexp=1,nexp
+               call setwarnflag(
+     1              rs(alr,jexp),rr(alr,jexp),jexp,2,flag)
+               if(rs(alr,jexp) == 0 .or. rr(alr,jexp) /= rr(alr,jexp)
+     1              .or. rs(alr,jexp) /= rs(alr,jexp)) then
+                  write(iun,*) 'alr=',alr,rr(alr,jexp),
+     2             '/',rs(alr,jexp),flag
+               else
+                  write(iun,*) 'alr=',alr,
+     1             rr(alr,jexp)/rs(alr,jexp),flag
+               endif
+            enddo
          enddo
       endif
       end
@@ -476,25 +524,36 @@ c     $                    (flst_alr(j,alrp),j=1,nlegreal) !,', ',label,':'
       real * 8 jac_over_csi,
      #jac_over_csi_coll,jac_over_csi_soft,rr(maxalr,nexp),
      #rc(maxalr,nexp),jac_over_csi_p,jac_over_csi_m
-      integer j,jexp,jexpfirst,alr,alrp
+      integer j,jexp,alr,alrp
       real * 8 random
       external random
       logical ident(maxalr)
       character * 15 flag
-      logical valid_emitter,iszero,isnonzero,isequal
-      external valid_emitter
+      logical valid_emitter,iszero,isnonzero,isequal,bad_born_kin,
+     1     bad_real_kin
+      external valid_emitter,bad_born_kin,bad_real_kin
+c     The tolpar parameter sets the minimum in the ratio (transverse momentum)/(total energy)
+c     for a kinematic configuration to be accepted for collinear tests. It is started
+c     at 1, and for each failed configuration it is reduced by a factor 0.95 until an
+c     acceptable configuration is found
+      real * 8 tolpar
+      tolpar = 1
+ 19   continue
+      tolpar = tolpar * 0.95d0
       do j=1,ndiminteg-3
          xborn(j)=random()
       enddo
       call gen_born_phsp(xborn)
+      if(bad_born_kin(tolpar)) goto 19
       call setscalesbtilde
       call allborn
+      tolpar = 1
+ 20   continue
+      tolpar = tolpar * 0.95d0
       do j=1,3
          xrad(j)=random()
       enddo
       if(valid_emitter(kn_emitter)) then
-         write(iun,*) ' Random Born variables ====> ',xborn
-         write(iun,*) ' Random radiation variables ====> ',xrad
          do jexp=1,nexp
             if(idir.ne.-1) then
                xrad(2)=10d0**(-jexp)
@@ -508,6 +567,11 @@ c     $                    (flst_alr(j,alrp),j=1,nlegreal) !,', ',label,':'
                call gen_real_phsp_isr
      #(xrad,jac_over_csi,jac_over_csi_p,jac_over_csi_m,
      #jac_over_csi_soft)
+            endif
+            if(jexp == 1) then
+               if(bad_real_kin(tolpar)) goto 20
+               write(iun,*) ' Random Born variables ====> ',xborn
+               write(iun,*) ' Random radiation variables ====> ',xrad
             endif
             write(iun,*) '######### Check coll',xrad(2)
             call sig(rr(1,jexp))
@@ -525,59 +589,59 @@ c     $                    (flst_alr(j,alrp),j=1,nlegreal) !,', ',label,':'
             enddo
          enddo
          do alr=1,flst_nalr
+            if(kn_emitter /= flst_emitter(alr)) cycle
             if(ident(alr)) cycle
-c     if one rr is zero, all others must be zero
-            iszero=.false.
-            isnonzero=.false.
-            jexpfirst=2
-            do jexp=nexp,1,-1
-c               if(rc(alr,jexp).ne.0) isnonzero=.true.
-c               if(rc(alr,jexp).eq.0) iszero=.true.
-c               if(rr(alr,jexp).ne.0) isnonzero=.true.
-               if(rr(alr,jexp).eq.0) then
-                  if(rc(alr,jexp).ne.0) then
-                     write(iun,*) ' some vanish and some do not'
-                  endif
-                  jexpfirst=jexp+1
-                  goto 111
+            write(iun,'(2a,i2,a,20(1x,i3))') label,'  emitter ',
+     1           kn_emitter,', process ',(flst_alr(j,alr),j=1,nlegreal)
+            do alrp=alr+1,flst_nalr
+               if(kn_emitter /= flst_emitter(alrp)) cycle
+               isequal=.true.
+               do jexp=1,nexp
+                  if(rr(alr,jexp).ne.rr(alrp,jexp).or.
+     1                 rc(alr,jexp).ne.rc(alrp,jexp)) isequal=.false.
+               enddo
+               if(isequal) then
+                  write(iun,'(2a,i2,a,20(1x,i3))') label,' emitter ',
+     1                 flst_emitter(alrp),', process ',
+     2             (flst_alr(j,alrp),j=1,nlegreal)
+                  write(iun,'(2a,i2,a,20(1x,i3))') ' ==  ',' emitter ',
+     1                 flst_emitter(alr),', process ',
+     2             (flst_alr(j,alr),j=1,nlegreal)
+                  ident(alrp)=.true.                     
                endif
             enddo
- 111        continue
-            if(jexpfirst.le.nexp) then
-               write(iun,'(2a,i2,a,20(1x,i3))') label,'  emitter ',
-     #kn_emitter,', process ',(flst_alr(j,alr),j=1,nlegreal)
-               do alrp=alr+1,flst_nalr
-                  isequal=.true.
-                  do jexp=1,nexp
-                     if(rr(alr,jexp).ne.rr(alrp,jexp).or.
-     #rc(alr,jexp).ne.rc(alrp,jexp)) isequal=.false.
-                  enddo
-                  if(isequal) then
-c                     write(iun,'(2a,i2,a,20(1x,i3))') label,' emitter ',
-c     # kn_emitter,', process ',(flst_alr(j,alrp),j=1,nlegreal)
-                     ident(alrp)=.true.
-                  endif
-               enddo
-               do jexp=jexpfirst,nexp
-                  call setwarnflag(abs(rc(alr,jexp)/rr(alr,jexp)-1),
-     1                 jexp,jexpfirst,flag)
+            do jexp=1,nexp
+               call setwarnflag(rr(alr,jexp),rc(alr,jexp),
+     1              jexp,1,flag)
 c     Added this 'if' to be sure that no division by zero occurs
 c     if((rr(alr,jexp-1)-rc(alr,jexp-1)).ne.0d0) then
 c     write(iun,*) (rr(alr,jexp)-rc(alr,jexp))/
 c     #(rr(alr,jexp-1)-rc(alr,jexp-1)),rc(alr,jexp)/rr(alr,jexp),flag
 c     endif
-                  write(iun,*) rc(alr,jexp)/rr(alr,jexp),flag
- 1             enddo
-            endif
+               if(rc(alr,jexp) == 0 .or. rr(alr,jexp) /= rr(alr,jexp)
+     1              .or. rc(alr,jexp) /= rc(alr,jexp)) then
+                  write(iun,*) 'alr=',alr,rr(alr,jexp),'/',
+     1             rc(alr,jexp),flag
+               else
+                  write(iun,*) 'alr=',alr,rr(alr,jexp)/rc(alr,jexp),flag
+               endif
+ 1          enddo
          enddo
       endif
       end
 
-      subroutine setwarnflag(dist,jexp,jexpfirst,flag)
+      subroutine setwarnflag(r1,r2,jexp,jexpfirst,flag)
       implicit none
       character * 15 flag
-      real * 8 dist
+      real * 8 r1,r2,dist
       integer jexp,jexpfirst
+      if(r1 == 0 .and. r2 /= 0 .or. r1 /= 0 .and. r2 == 0) then
+         dist = 1
+      elseif(r1 == 0 .and. r2 == 0) then
+         dist = 0
+      else
+         dist = abs(r1/r2-1)
+      endif
       flag=' '
       if(dist.gt.0.01) then
          if(jexp.eq.jexpfirst) then
@@ -604,7 +668,123 @@ c     endif
       endif
       end
 
+      logical function bad_born_kin(tolpar)
+      implicit none
+      real * 8 tolpar
+      include 'pwhg_dbg.h'
+      include 'nlegborn.h'
+      include 'pwhg_flst.h'
+      include 'pwhg_kn.h'
+      include 'pwhg_st.h'
+      include 'pwhg_pdf.h'
+      logical isnotres(nlegborn)
+      real * 8 p(0:3,nlegborn)
+      real * 8 pdf(-pdf_nparton:pdf_nparton), save_stmufact2, e
+      integer m,l,k
+      bad_born_kin = .true.
+c     In V2 the resonance structure is the same for all.
+      isnotres = .true.
+      do k=3,nlegborn
+         if(flst_bornres(k,1)/=0) then
+            isnotres(flst_bornres(k,1)) = .false.
+         endif
+      enddo
+      l=0    
+      do k=1,nlegborn
+         if(isnotres(k)) then
+            l=l+1
+            p(:,l) = kn_cmpborn(:,k)
+         endif
+      enddo
+c     exclude zero pdf's
+      e = p(0,1)+p(0,2)
+      save_stmufact2=st_mufact2
+      st_mufact2 = e**2
+      call pdfcall(1,kn_xb1,pdf)
+      do k=-3,3
+         if(pdf(k) == 0) return
+      enddo
+      call pdfcall(2,kn_xb2,pdf)
+      st_mufact2 = save_stmufact2
+      do k=-3,3
+         if(pdf(k) == 0) return
+      enddo
 
+c     if any transverse momentum is too small, return
+      if(l > 1) then ! exclude single resonance production!
+         do k=3,l
+            if(p(1,k)**2+p(2,k)**2 < (e*tolpar)**2) return
+            if(l > 2) then
+c     any transverse momentum of a pair is too small
+               do m=k+1,l
+                  if((p(1,k)+p(1,m))**2+(p(2,k)+p(2,m))**2
+     1                 < (e*tolpar)**2) return
+               enddo
+            endif
+         enddo
+      endif
+      bad_born_kin = .false.
+      end
+
+      logical function bad_real_kin(tolpar)
+      implicit none
+      real * 8 tolpar
+      include 'pwhg_dbg.h'
+      include 'nlegborn.h'
+      include 'pwhg_flst.h'
+      include 'pwhg_kn.h'
+      include 'pwhg_st.h'
+      include 'pwhg_pdf.h'
+      logical isnotres(nlegreal)
+      real * 8 p(0:3,nlegreal)
+      real * 8 pdf(-pdf_nparton:pdf_nparton), save_stmufact2, e
+      integer m,l,k
+      
+      bad_real_kin = .true.
+c     In V2 the resonance structure is the same for all.
+      isnotres = .true.
+      do k=3,nlegreal
+         if(flst_realres(k,1)/=0) then
+            isnotres(flst_realres(k,1)) = .false.
+         endif
+      enddo
+      l=0    
+      do k=1,nlegreal
+         if(isnotres(k)) then
+            l=l+1
+            p(:,l) = kn_cmpreal(:,k)
+         endif
+      enddo
+c     exclude zero pdf's
+      e = p(0,1)+p(0,2)
+      save_stmufact2=st_mufact2
+      st_mufact2 = e**2
+      call pdfcall(1,kn_x1,pdf)
+c tolerate zero pdf only for heavy quarks
+      do k=-3,3
+         if(pdf(k) == 0) return
+      enddo
+      call pdfcall(2,kn_x2,pdf)
+      st_mufact2 = save_stmufact2
+      do k=-3,3
+         if(pdf(k) == 0) return
+      enddo
+
+c     if any transverse momentum is too small, return
+      if(l > 1) then ! exclude single resonance production!
+         do k=3,l
+            if(p(1,k)**2+p(2,k)**2 < (e*tolpar)**2) return
+            if(l > 2) then
+c     any transverse momentum of a pair is too small
+               do m=k+1,l
+                  if((p(1,k)+p(1,m))**2+(p(2,k)+p(2,m))**2
+     1                 < (e*tolpar)**2) return
+               enddo
+            endif
+         enddo
+      endif
+      bad_real_kin = .false.
+      end
 
       subroutine sigreal_rad(sig)
       implicit none
@@ -644,6 +824,7 @@ c     endif
 c     generate "nmomset" random real-phase space configurations
             call fillmomenta(nlegreal,nmomset,kn_masses,preal)
             do alr=1,flst_nalr
+               flst_cur_alr = alr
                if(kn_emitter.eq.0) then
                   kn_resemitter=0
                else
@@ -838,6 +1019,7 @@ c    csi^2 (1-y)   for FSR regions
 c     generate "nmomset" random real-phase space configurations
             call fillmomenta(nlegreal,nmomset,kn_masses,preal)
             do alr=1,flst_nalr
+               flst_cur_alr = alr
                do j=1,nmomset
                   if(kn_emitter.eq.0) then
                      kn_resemitter=0

@@ -1,9 +1,12 @@
 #!/usr/bin/python
 
-# this command generates a list of the plots present
-# in a .tex file, when using includegraphics.
-# can be easily adapted to recognize othe figures macros.
-# takes care to ignore latex comments.
+# Usage:
+# After a POWHEG parallel run, if ubexcess_correct was set to 1 in the powheg.input file:
+# $ ./FindReweightFromCounters.py pwgcounters-st4-????.dat
+# It will examine the cross sections and print the correction factor that accounts
+# for the cross section estimate performed during the generation of the events.
+
+
 
 # regular expressions
 import math
