@@ -1,0 +1,3 @@
+This files are for testing the integrator.
+It uses the hvq package, that should be present as a POWHEG-BOX-V2/ subdirectory.
+Just do 'make' in this directory to build the executable, then run the runpar.sh script.

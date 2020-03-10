@@ -58,6 +58,15 @@ c         endif
       endif
       end
 
+c     when the flag alphasfrompdf is used, this function is called for
+c     alphas, that redirects to the LHAPDF function alphasPDF
+      function alphasfrompdf(mu)
+      real * 8 alphasfrompdf,mu
+      real * 8 alphasPDF
+      alphasfrompdf = alphasPDF(mu)
+      end
+
+      
       function genericxlambdL(as,q,nf)
       implicit none
       real * 8 genericxlambdL,as,q

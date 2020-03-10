@@ -4,27 +4,32 @@ c...reads initialization information from a les houches events file on unit nlf.
       implicit none
       integer nlf
       character * 200 string
-      integer ipr
+      integer ipr,iret,nch
       include 'LesHouches.h'
       logical ini
       data ini/.true./
       save ini
-      if(ini) then
-         call lhrwgt_clearheader
-         ini = .false.
-      endif
- 1    read(nlf,fmt='(a)',err=998,end=998) string
-      if(adjustl(string).eq.'<initrwgt>') then
-         backspace(nlf)
-         call lhrwgt_readheader(nlf)
-         call lhrwgt_headerloader
+ 1    continue
+c     read(nlf,fmt='(a)',err=998,end=998) string
+      call pwhg_io_read(nlf,string,iret)
+      if(iret == -1) goto 998
+      if(adjustl(string(1:10)).eq.'<initrwgt>') then
+c     This subroutine is only called by the shower-analysis routines.
+c     Here we abandon the old initrwgt handling, and only support the new
+c     one. The old handling is only supported by the pwhgreweight.f routines.
+         call pwhg_io_backspace(nlf)
+         call rwl_readheader(nlf)
          goto 1
       endif
       if(string(1:6).eq.'<init>') then
-         read(nlf,*) idbmup(1),idbmup(2),ebmup(1),ebmup(2),
+         call pwhg_io_read(nlf,string,iret)
+         if(iret == -1) goto 998
+         read(string,*) idbmup(1),idbmup(2),ebmup(1),ebmup(2),
      &        pdfgup(1),pdfgup(2),pdfsup(1),pdfsup(2),idwtup,nprup
          do ipr=1,nprup
-            read(nlf,*) xsecup(ipr),xerrup(ipr),xmaxup(ipr),
+            call pwhg_io_read(nlf,string,iret)
+            if(iret == -1) goto 998
+            read(string,*) xsecup(ipr),xerrup(ipr),xmaxup(ipr),
      &           lprup(ipr)
          enddo
          goto 999
@@ -45,7 +50,9 @@ c...reads event information from a les houches events file on unit nlf.
       integer i,j,iret
  1    continue
       string=' '
-      read(nlf,fmt='(a)',err=777,end=666) string
+      call pwhg_io_read(nlf,string,iret)
+      if(iret /=0 ) goto 666
+c      read(nlf,fmt='(a)',err=777,end=666) string
       if(string.eq.'</LesHouchesEvents>') then
          goto 998
       endif
@@ -53,9 +60,13 @@ c...reads event information from a les houches events file on unit nlf.
 c on error try next event. The error may be caused by merging
 c truncated event files. Thus we are tolerant about it.
 c Only on EOF return with no event found
-         read(nlf,*,end=998,err=1)nup,idprup,xwgtup,scalup,aqedup,aqcdup
+         call pwhg_io_read(nlf,string,iret)
+         if(iret /=0 ) goto 998
+         read(string,*,err=1)nup,idprup,xwgtup,scalup,aqedup,aqcdup
          do i=1,nup
-            read(nlf,*,end=998,err=1) idup(i),istup(i),mothup(1,i),
+            call pwhg_io_read(nlf,string,iret)
+            if(iret /=0 ) goto 998
+            read(string,*,err=1) idup(i),istup(i),mothup(1,i),
      &           mothup(2,i),icolup(1,i),icolup(2,i),(pup(j,i),j=1,5),
      &           vtimup(i),spinup(i)
          enddo
@@ -93,6 +104,7 @@ c no event found:
       include 'pwhg_flg.h'
       include 'pwhg_weights.h'
       include 'pwhg_lhrwgt.h'
+      include 'pwhg_rwl.h'
       character * 200 string
       integer nlf,iret
       integer iid,iendid
@@ -102,15 +114,25 @@ c no event found:
       weights_num = 0
  1    continue
       string=' '
-      read(unit=nlf,fmt='(a)',end=998) string
-      if(adjustl(string).eq.'<rwgt>') then
-         call lhrwgt_loadweights(nlf,iret)
+      call pwhg_io_read(nlf,string,iret)
+      if(iret /= 0) goto 998
+      string = adjustl(string)
+      if(string(1:5).eq.'#rwgt') then
+         read(string(6:),*) rwl_type,
+     $        rwl_index,rwl_weight,rwl_seed,rwl_n1,rwl_n2
+      endif
+      if(string(1:6).eq.'<rwgt>' .or. string(1:9).eq.'<weights>') then
+c     this routine is reached only if flg_rwl_add is true, from the main program,
+c     or from the analysis routines. Thus we only enforce the new weight info
+c     apparatus. The old apparatus is used only in lhefreadevlhrwgt.
+         call pwhg_io_backspace(nlf)
+         call rwl_loadweights(nlf,iret)
 c on a return with iret != 0 the event will be skipped 
          if(iret.ne.0) return
          goto 1
       endif
-      if(string.eq.'<event>') then
-         backspace nlf
+      if(string.eq.'</event>') then
+         call pwhg_io_backspace(nlf)
          return
       endif
 c Look for old new weight format:
@@ -129,9 +151,18 @@ c Look for old new weight format:
      5                       weights_whichpdf(weights_num)
       endif
       if(string.eq.'# Start extra-info-previous-event') then
-         read(nlf,'(a)') string
+         call pwhg_io_read(nlf,string,iret)
+         if(iret /= 0) goto 800
          read(string(3:),*) rad_kinreg
-         read(nlf,'(a)') string
+         call pwhg_io_read(nlf,string,iret)
+ 800     if(iret /= 0) then
+            write(*,*)
+     1           'lhefreadextra:'
+            write(*,*)
+     1       'found no lines after Start extra-info-previous-event'
+            write(*,*) ' exiting ...'
+            call exit(-1)
+         endif
          read(string(3:),*) rad_type
       endif
       goto 1
@@ -223,15 +254,16 @@ c$$$c      write(*,*) string
       end
 
 
-      subroutine lhrwgt_writeheader(iun)
-      implicit none
-      integer iun
-      include 'pwhg_lhrwgt.h'
-      integer j
-      do j=1,lhrwgt_nheader
-         write(iun,'(a)') trim(lhrwgt_header(j))
-      enddo
-      end
+c$$$      subroutine lhrwgt_writeheader(iun)
+c$$$      implicit none
+c$$$      integer iun
+c$$$      include 'pwhg_lhrwgt.h'
+c$$$      integer j
+c$$$      do j=1,lhrwgt_nheader
+c$$$         write(iun,'(a)') trim(lhrwgt_header(j))
+c$$$      enddo
+c$$$      end
+c$$$
 
       subroutine lhrwgt_clearheader
       implicit none

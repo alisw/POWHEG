@@ -53,8 +53,9 @@ INCLUDE =$(wildcard ../include/*.h *.h include/*.h)
 
 ifeq ("$(PDF)","lhapdf")
 LHAPDF_CONFIG=lhapdf-config
-PDFPACK=lhapdfif.o
-LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF
+PDFPACK=lhapdf6if.o lhapdf6ifcc.o
+FJCXXFLAGS+= $(shell $(LHAPDF_CONFIG) --cxxflags)
+LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF -lstdc++
 ifeq  ("$(STATIC)","-static") 
 ## If LHAPDF has been compiled with gfortran and you want to link it statically, you have to include
 ## libgfortran as well. The same holds for libstdc++. 
@@ -94,7 +95,7 @@ endif
 
 %.o: %.cc
 	$(CXX) $(DEBUG) -c -o $(OBJ)/$@ $^ $(FJCXXFLAGS)
-
+LIBS+=-lz
 USER=init_couplings.o init_processes.o Born_phsp.o Born.o virtual.o	\
      real.o  ttdec.o $(PWHGANAL)
 
@@ -108,7 +109,7 @@ PWHG=pwhg_main.o pwhg_init.o bbinit.o btilde.o lhefwrite.o		\
 	setstrongcoupl.o integrator.o newunit.o mwarn.o sigsoftvirt.o	\
 	sigcollsoft.o sigvirtual.o reshufflemoms.o  setlocalscales.o    \
         validflav.o mint_upb.o  pwhgreweight.o opencount.o              \
-        ubprojections.o $(PDFPACK) $(USER) $(FPEOBJ)
+        ubprojections.o $(PDFPACK) $(USER) $(FPEOBJ) lhefread.o pwhg_io_interface.o rwl_weightlists.o rwl_setup_param_weights.o
 
 # target to generate LHEF output
 pwhg_main:$(PWHG)
@@ -116,7 +117,7 @@ pwhg_main:$(PWHG)
 
 LHEF=lhef_analysis.o boostrot.o random.o cernroutines.o		\
      opencount.o powheginput.o pwhg_bookhist.o $(PWHGANAL)	\
-     lhefread.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
+     lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o pwhg_analysis_driver.o $(FPEOBJ)
 
 # target to analyze LHEF output
 lhef_analysis:$(LHEF)
@@ -126,14 +127,14 @@ lhef_analysis:$(LHEF)
 
 # target to read event file, shower events with HERWIG + analysis
 HERWIG=main-HERWIG.o setup-HERWIG-lhef.o herwig.o powheginput.o\
-	pwhg_bookhist.o $(PWHGANAL) lhefread.o opencount.o pdfdummies.o $(FPEOBJ)
+	pwhg_bookhist.o $(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o opencount.o pdfdummies.o $(FPEOBJ)
 
 main-HERWIG-lhef: $(HERWIG)
 	$(FF) $(patsubst %,$(OBJ)/%,$(HERWIG))  $(LIBSFASTJET)  $(STATIC) -o $@
 
 # target to read event file, shower events with PYTHIA + analysis
 PYTHIA=main-PYTHIA.o setup-PYTHIA-lhef.o pythia.o boostrot.o powheginput.o \
-	pwhg_bookhist.o $(PWHGANAL) lhefread.o newunit.o pdfdummies.o		\
+	pwhg_bookhist.o $(PWHGANAL) lhefread.o pwhg_io_interface.o rwl_weightlists.o newunit.o pdfdummies.o		\
 	pwhg_analysis_driver.o random.o cernroutines.o opencount.o	\
 	$(FPEOBJ)
 
@@ -145,4 +146,5 @@ main-PYTHIA-lhef: $(PYTHIA)
 clean:
 	rm -f $(OBJ)/*.o pwhg_main lhef_analysis main-HERWIG-lhef	\
 	main-PYTHIA-lhef
+
 

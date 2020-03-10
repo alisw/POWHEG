@@ -1,5 +1,6 @@
 #!/bin/bash
 
+svnversiondir=`dirname $0`
 
 function svninfo {
 if which svn > /dev/null && svn info > /dev/null
@@ -17,7 +18,14 @@ currdir=`pwd`
 
 > $currdir/svnversion.txt
 
-for dir in ../ $currdir
+if [ a"$*" = a ]
+then
+    dirs="$currdir ../"
+else
+    dirs="$*"
+fi
+
+for dir in $dirs
 do
 
 cd $dir
@@ -41,16 +49,16 @@ then
     echo "clean version" >> $currdir/svnversion.txt
 else
     echo "Warning: not a clean version:"  >> $currdir/svnversion.txt
-    svn status | grep -e '^\?.*\.[fFch]$\|^[MA]' >> $currdir/svnversion.txt
+    svn status | grep -e '^\?.*\.[fFch]$\|^[MA]' | sort >> $currdir/svnversion.txt
 fi
 
 fi
-
-done
 
 cd $currdir
 
-gfortran ../svnversion/svnversion.f -o svnversion
+done
+
+gfortran $svnversiondir/svnversion.f -o svnversion
 
 ./svnversion
 
@@ -59,7 +67,7 @@ gfortran ../svnversion/svnversion.f -o svnversion
 
 if ! [ -e svn.version ] || ! cmp svnversion.tmp svn.version > /dev/null 2>&1
 then
-\mv svnversion.tmp svn.version
+    \mv svnversion.tmp svn.version
 else
 \rm svnversion.tmp
 fi

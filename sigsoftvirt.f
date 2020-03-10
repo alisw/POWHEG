@@ -296,6 +296,9 @@ c     others
             tot=tot+resvirt(jb)
          enddo
       enddo
+c     this is to include further (process specific) contributions.
+c     the defaul include file is empty.
+      include 'btildevirt_hook.h'
       if (.not.pwhg_isfinite(tot)) then
          do jb=1,flst_nborn
             resvirt(jb)=0d0

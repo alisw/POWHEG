@@ -6,7 +6,8 @@
       character * 20 pwgprefix
       integer lprefix
       common/cpwgprefix/pwgprefix,lprefix
-      integer ios,iun
+      integer ios,iun,iret
+      logical inrwgt
       call newunit(iun)
       if(pwgprefix(1:lprefix).eq.'pwg') then
          open(unit=iun,file='powheg.input',
@@ -19,15 +20,38 @@
          write(*,*) ' cannot open powheg input file'
          call exit(-1)
       endif
- 1    continue
-      read(unit=iun,fmt='(a)',iostat=ios,end=999) line
-      if(ios.ne.0) then
-         write(*,*) ' cannot read powheg input file'
-         call exit(-1)
+      inrwgt = .false.
+      do
+         read(unit=iun,fmt='(a)',iostat=ios,end=999) line
+         if(adjustl(line) == '</initrwgt>') then
+            read(unit=iun,fmt='(a)',iostat=ios,end=999) line
+            inrwgt = .false.
+         elseif(adjustl(line) == '<initrwgt>') then
+            inrwgt = .true.
+         endif
+         if(inrwgt) cycle
+         if(ios.ne.0) then
+            write(*,*) ' cannot read powheg input file'
+            call exit(-1)
+         endif
+         call pwhg_io_write(nlf,trim(line))
+      enddo
+ 999  continue
+      close(iun)
+      end
+
+      subroutine powheginputfile(file)
+      implicit none
+      character * 20 pwgprefix
+      integer lprefix
+      common/cpwgprefix/pwgprefix,lprefix
+      character(len=*) file
+      if(pwgprefix(1:lprefix).eq.'pwg') then
+         file = 'powheg.input'
+      else
+         file = pwgprefix(1:lprefix)//'powheg.input'
       endif
-      write(nlf,'(a)') trim(line)
-      goto 1
- 999  end
+      end
 
       function powheginput(stringa)
       implicit none
@@ -116,6 +140,20 @@
             line0=' '
             read(unit=iun,fmt='(a)',iostat=ios) line0
             if(ios.ne.0.and.line0.eq.' ') goto 10
+c skip completely a reweigting section
+            if(adjustl(line0) == '<initrwgt>') then
+               do while(adjustl(line0) /= '</initrwgt>')
+c     we empty the line before reading, since in case of EOF the behaviour
+c     is undefined
+                  line0 = ' '
+                  read(unit=iun,fmt='(a)',iostat=ios) line0
+                  if(ios.ne.0.and.line0.eq.' ') goto 10
+               enddo
+               line0 = ' '
+               read(unit=iun,fmt='(a)',iostat=ios) line0
+               if(ios.ne.0.and.line0.eq.' ') goto 10
+            endif
+c end reweigting section
             line=line0
             do k=1,maxlin
                if(line(k:k).eq.'#'.or.line(k:k).eq.'!') then

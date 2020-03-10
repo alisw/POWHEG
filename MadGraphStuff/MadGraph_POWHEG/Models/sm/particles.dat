@@ -15,7 +15,7 @@ d       d~        F        S      ZERO  ZERO    T    d    1
 u       u~        F        S      ZERO  ZERO    T    u    2
 s       s~        F        S      ZERO  ZERO    T    s    3
 c       c~        F        S      ZERO  ZERO    T    c    4
-b       b~        F        S      BMASS ZERO    T    b    5
+b       b~        F        S      ZERO  ZERO    T    b    5
 t       t~        F        S      TMASS TWIDTH  T    t    6
 
 #

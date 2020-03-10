@@ -9,20 +9,23 @@
          write(*,*) ' cannot find svnversion.txt'
          call exit(-1)
       endif
-      open(unit=12,file='svnversion.tmp',status='unknown')
-      write(12,'(a)') 'c -*- Fortran -*-'
-      write(12,'(a)') "      write(iun,'(a)') 'SVN status Begin'"
+      open(unit=13,file='svnversion.tmp',status='unknown')
+      write(13,'(a)') 'c -*- Fortran -*-'
+      write(13,'(a)')
+     1 "      call pwhg_io_write(iun, 'SVN status Begin')"
       do j=1,1000000
          read(unit=11,fmt='(a)',iostat=ios,end=99) string
          lll = len(trim(string))
-         write(12,'(a)') "      write(iun,'(a)')"
+         write(13,'(a)') "      call pwhg_io_write(iun,"
          do while(lll.gt.lchunks)
-            write(12,'(a)') "     1'"//string(1:lchunks)//"'//"
+            write(13,'(a)') "     1'"//string(1:lchunks)//"'//"
             string = string(lchunks+1:)
             lll = lll-lchunks
          enddo
-         write(12,'(a)') "     1'"//trim(string)//"'"
+         write(13,'(a)') "     1'"//trim(string)//"')"
       enddo
  99   continue
-      write(12,'(a)') "      write(iun,'(a)') 'SVN status End'"
+      write(13,'(a)') "      call pwhg_io_write(iun, 'SVN status End')"
+      close(11)
+      close(13)
       end

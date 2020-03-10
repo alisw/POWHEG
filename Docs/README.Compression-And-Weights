@@ -1,0 +1,139 @@
+Since version XXX two important features have been added: compression and
+a better handling of multiple weights.
+
+In order to compile a process with this version, the Makefile
+should be modified as follows:
+   A line LIBS+=-lz should be inserted before the USER= ... line;
+   The PWHG variable should be augmented by adding lhefread.o,
+   pwhg_io_interface.o, rwl_weightlists.o and rwl_setup_param_weights.o;
+The development files of zlib should be available (the zlib1g-dev package
+on Ubuntu). It is available by default on CERN platforms. A dummy zlib
+package is included in the distribution. By linking it, everything works
+but without compression.
+
+You need a late gfortran compiler, 5.1.0 and 5.2.1 are known to work.
+On lxplus at CERN you can do
+ source /afs/cern.ch/sw/lcg/contrib/gcc/5.2/x86_64-slc6-gcc52-opt/setup.sh
+and recompile.
+
+COMPRESSION
+
+In order to activate compression of les Houches files, insert:
+
+compress_lhe 1
+
+in the poweg.input file. The generated .lhe file will be gz compressed.
+You can examine it by using zmore, zless or zcat. Alternatively, doing
+$ mv pwgevents.lhe pwgevents.lhe.gz
+$ gzip -d pwgevents.lhe.gz
+to get back the ascii file. The compression factor is roughly 5.
+
+The flag acts only for writing files. When reading files (in order to add
+new weights, for example) the io interface detects whether the file is
+compressed or not, and reads it in all cases.
+
+When using the storemintupb flag, it is often userful to compress also the 
+
+
+
+NEW WEIGTHS HANDLING
+
+The new weight system is added to the previous one, and is fully independent upon it. The older system
+will be removed at some point. It is activated by inserting in the powheg.input file the line
+
+rwl_file 'filename'
+
+where filename is the name of the file containing the xml description of the weights. Alternatively, one
+can use
+
+rwl_file '-'
+
+<initrwgt>
+...
+</initrwgt>
+
+and insert the xml weight description in the powheg.input file itself. The <initrwgt> and </initrwgt> lines
+must be alone in a line. The weights are inserted according to the standard described in arXiv:1405.1067.
+POWHEG should set its parameter according to the description present in each weight. For example
+<initrwgt>
+<weightgroup name='PDFS'>
+<weight id='1'> lhapdf=10800 </weight>
+<weight id='2'> lhapdf=10801 </weight>
+</weightgroup>
+<weight id='3'> lhapdf=10802 facscfact=0.5 </weight>
+</initrwgt>
+
+The interpretation of the settings for each weight is performed by the subroutine in rwl_setup_param_weights.f.
+It looks for keywords=value pairs in the description field of the weight, and it performs the appropriate
+action. At the moment it only handles PDF's and scale factors, but it can be easily extended according
+to the needs of each process. Inspecting the file  rwl_setup_param_weights.f helps in explaining what is
+handled at the moment.
+
+By running the pwhg_main program, you will get events with the appropriate <initrwgt> header, and with the
+three weights added. The nominal weight is not included! You should add an appropriate line
+
+<weight id='1'> No variations here, nominal weight </weight>
+
+without any key=value pairs to also list the nominal weight.
+
+ADDING WEIGHTS
+
+By inserting the line
+
+rwl_add 1
+
+in the powheg.input file, a .lhe file is red in, and new weights are added to the previous ones. For
+example, including
+
+rwl_file '-'
+rwl_add 1
+
+<initrwgt>
+<weightgroup name='PDFS'>
+<weight id='4'> lhapdf=10803 </weight>
+<weight id='5'> lhapdf=10804 </weight>
+</weightgroup>
+<weight id='6'> lhapdf=10802 facscfact=2 </weight>
+</initrwgt>
+
+three new weights will be added. Notice that in these way other
+parameters may have different settings, according to the new
+powheg.input file. Thus, by using this feature, the behaviour of the
+older weight scheme can be fully reproduced.
+
+Remember, however, that, as in the old weight scheme, you cannot
+reweight in parameters that affect the generation of phase
+space. Typically, the masses of final state particles or resonances
+may do that.  If you need to do this, contact the authors of the
+package.  Other subtle problems that may arise are, for example, if
+the width of a resonance depends upon alpha_s, and thus on the PDF
+set. This may cause inconsistencies. Always contact the authors of the
+package if you find problems there.
+
+
+EFFICIENCY ISSUES WITH MANY PDF SETS
+
+If hundreds of weights are needed for pdf variations, POWHEG will have to load several PDF sets at once.
+In order to avoid excessive memory paging when switching pdf's, POWHEG can handle events in groups.
+
+By setting
+
+rwl_group_events 1000
+
+for example, POWHEG first computes one thousand events, then computes one weight variation for the
+whole group, etc. In this way POWHEG has to keep 1000 events in memory, but this may reduce the
+resident memory requirement for the pdf. One can play with this number to find optimal settings.
+
+A flag is also available to limit the maximum number of pdf sets that the program can keep in memory:
+
+lhapdf6maxsets 30
+
+means that the program can keep up to 30 initialized pdf sets in memory. If yu have weights with more than 30
+pdf's, when the program requests the 31st set, the set that was used less recently will be deallocated, and
+a new set is allocated in his place. If this number exceeds the number of requested pdf's in the weights, all
+needed pdf's will be kept in memory all time.
+
+Thus, this number should be either higher than the number of pdf's requested in the weights, or very low (1,
+or 2 if fullrwgt is on).
+
+
