@@ -506,7 +506,7 @@ c different grid iterations
      1        xgrid,xint,iret)
          if(iret.ne.0) then
             write(*,*) 'cannot find level '//prevtag//'gridinfo files'
-            call pwhg_exit()
+            call pwhg_exit(1)
          endif
       endif
 c The actual value of the grid is the one to be saved in the

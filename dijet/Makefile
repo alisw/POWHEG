@@ -12,7 +12,16 @@ ANALYSIS=default
 #STATIC= -static
 #
 ifeq ("$(COMPILER)","gfortran")	
-F77= gfortran -fno-automatic 	
+FMISMATCH=
+GFORTRAN_VERION = $(shell gfortran --version | head -1 | rev | cut -d " " -f1 | rev)
+version_tuple := $(subst ., ,$(GFORTRAN_VERION:%=%))
+GFORTRAN_VERION_MAJOR := $(word 1,$(version_tuple))
+GFORTRAN_VERION_MINOR := $(word 2,$(version_tuple))
+GFORTRAN_VERION_PATCH := $(word 3,$(version_tuple))
+ifeq ($(GFORTRAN_VERION_MAJOR), 10)
+FMISMATCH=-fallow-argument-mismatch
+endif
+F77= gfortran -fno-automatic $(FMISMATCH)
 ## NOTE: -fbounds-check sometimes causes a compilation error
 ## due to non-lazy evaluation of boolean in gfortran.
 # FFLAGS= -Wall -Wimplicit-interface
@@ -42,6 +51,12 @@ OPT = -O3 #-fast
 #DEBUG= -debug -g
 endif
 
+SYSTEM=$(shell uname -s)
+STDLIBCPP=-lstdc++
+ifeq ("$(SYSTEM)", "Darwin")
+STDLIBCPP=-lc++
+endif
+
 OBJ=obj-$(COMPILER)
 
 PWD=$(shell pwd)
@@ -68,7 +83,7 @@ ifeq  ("$(STATIC)","-static")
 ## does perform this inclusion. The path has to be set by the user. 
  LIBGFORTRANPATH=/usr/lib/gcc/x86_64-redhat-linux/4.1.2
  LIBSTDCPP=/lib64
- LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) -lstdc++
+ LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) $(STDLIBCPP)
 endif
 LIBS+=$(LIBSLHAPDF)
 else
@@ -79,7 +94,7 @@ endif
 ifeq ("$(ANALYSIS)","default")
 ##To include Fastjet configuration uncomment the following lines. 
 FASTJET_CONFIG=$(shell which fastjet-config)
-LIBSFASTJET += $(shell $(FASTJET_CONFIG) --libs --plugins ) -lstdc++
+LIBSFASTJET += $(shell $(FASTJET_CONFIG) --libs --plugins ) $(STDLIBCPP)
 FJCXXFLAGS+= $(shell $(FASTJET_CONFIG) --cxxflags)
 PWHGANAL=pwhg_analysis.o pwhg_bookhist-multi.o  observables.o fastjetfortran.o
 ## Also add required Fastjet drivers to PWHGANAL (examples are reported)
