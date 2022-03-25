@@ -18,7 +18,7 @@ version_tuple := $(subst ., ,$(GFORTRAN_VERION:%=%))
 GFORTRAN_VERION_MAJOR := $(word 1,$(version_tuple))
 GFORTRAN_VERION_MINOR := $(word 2,$(version_tuple))
 GFORTRAN_VERION_PATCH := $(word 3,$(version_tuple))
-ifeq ($(GFORTRAN_VERION_MAJOR), 10)
+ifeq ($(shell test $(GFORTRAN_VERION_MAJOR) -ge 10; echo $$?), 0)
 FMISMATCH=-fallow-argument-mismatch
 endif
 F77= gfortran -fno-automatic $(FMISMATCH)
