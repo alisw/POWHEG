@@ -187,7 +187,7 @@ res=    CF*Tf*((-1.1111111111111112_dp - (2*lnx)/3._dp)*pqq -          &
     real(dp), intent(in) :: y
     real(dp)             :: res
     
-    write(0,*) 'sf_P1qqV_DIS: DIS scheme splitting functions &
+    write(*,*) 'sf_P1qqV_DIS: DIS scheme splitting functions &
          &currently not supported' 
     stop
     res = sf_P1qqV(y) - cf_CqF2MSbar(y)*(11*CA - 2*nf)/6.0_dp
@@ -326,7 +326,7 @@ res=    CF*Tf*((-1.1111111111111112_dp - (2*lnx)/3._dp)*pqq -          &
     real(dp), intent(in) :: y
     real(dp)             :: res
     
-    write(0,*) 'sf_P1qg_DIS: DIS scheme splitting functions currently not supported' 
+    write(*,*) 'sf_P1qg_DIS: DIS scheme splitting functions currently not supported' 
     stop
     res = sf_P1qg(y) - cf_CgF2MSbar(y)*(11*CA - 2*nf)/6.0_dp
   end function sf_P1qg_DIS

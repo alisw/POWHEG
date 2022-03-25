@@ -371,9 +371,11 @@ c First compute total for f and f/f0 (f/b)
 c        iret = 1 is end of file.
          if(iret == 1) exit
          if(iret /= 0) goto 998
-         if(f/f0 > ratlim) then
-            ndiscarded = ndiscarded + 1
-            cycle
+         if(f0>0) then
+            if(f/f0 > ratlim) then
+               ndiscarded = ndiscarded + 1
+               cycle
+            endif
          endif
          ipoints=ipoints+1
          xint=xint+f
@@ -428,9 +430,10 @@ c     loop for reading u-bound data
                write(*,*) ' error while loading bound files'
                call exit(-1)
             endif
-            if(f/f0 > ratlim) then
-               ndiscarded = ndiscarded + 1
-               cycle
+            if(f0>0) then
+               if(f/f0 > ratlim) then
+                  cycle
+               endif
             endif
 
             call evalprod
@@ -477,9 +480,10 @@ c     check if the failure rate is satisfactory
             call getlinemintupb1(filetag,ndim,cells,f,f0,iret)
             if(iret.eq.1) exit
             if(iret.ne.0) goto 998
-            if(f/f0 > ratlim) then
-               ndiscarded = ndiscarded + 1
-               cycle
+            if(f0>0) then
+               if(f/f0 > ratlim) then
+                  cycle
+               endif
             endif
 
             call evalprod

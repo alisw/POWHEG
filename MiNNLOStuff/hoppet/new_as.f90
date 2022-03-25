@@ -181,7 +181,7 @@ contains
        seg%dt    = (seg%thi - seg%tlo) / nbin
        allocate(seg%ra(0:nbin))
     end do
-    !write(0,*) 'new_as: used total bins ', nbin_total
+    !write(*,*) 'new_as: used total bins ', nbin_total
 
     !-- find out in which segment we start
     tstart = tOfQ(nah%Q)
@@ -228,8 +228,8 @@ contains
        seg => nah%seg(j)
        alfas_here = one/nah%seg(j-1)%ra(ubound(nah%seg(j-1)%ra,dim=1))
        if (mass_steps_on .and. nah%fixnf == nofixnf) then
-          !write(0,*) '------ changing as from ',j-1,' to ',j
-          !write(0,*) j-1, alfas_here
+          !write(*,*) '------ changing as from ',j-1,' to ',j
+          !write(*,*) j-1, alfas_here
           lnmatch = two*log(nah%muMatch_mQuark)
           select case (nah%nloop)
           case(2)
@@ -260,8 +260,8 @@ contains
        seg => nah%seg(j)
        alfas_here = one/nah%seg(j+1)%ra(0)
        if (mass_steps_on .and. nah%fixnf == nofixnf) then
-!          write(0,*) '------ changing as from ',j+1,' to ',j
-!          write(0,*) j+1, alfas_here
+!          write(*,*) '------ changing as from ',j+1,' to ',j
+!          write(*,*) j+1, alfas_here
           lnmatch = two*log(nah%muMatch_mQuark)
           select case (nah%nloop)
           case(2)
@@ -278,8 +278,8 @@ contains
                   & + (-alphastep31_lclscheme + j * alphastep31_nl_lclscheme) * lnmatch & 
                   & + (alphastep30_lclscheme + j * alphastep30_nl_lclscheme))*alfas_here**3)
           end select
-!          write(0,*) j, alfas_here
-!          write(0,*) 'Coefficients', alphastep20_lclscheme * pisq
+!          write(*,*) j, alfas_here
+!          write(*,*) 'Coefficients', alphastep20_lclscheme * pisq
        end if
        seg%ra(ubound(seg%ra,dim=1)) = one/alfas_here
        do i = ubound(seg%ra,dim=1)-1, 0, -1
@@ -362,7 +362,7 @@ contains
        call wae_warn(max_warn,warn_id,'na_Value: will evolve &
             &fixed-nf alpha_s beyond precalculated range.',&
             &'This procedure may be very slow')
-       !write(0,*) Qoft(seg%tlo),Qoft(seg%thi),Q
+       !write(*,*) Qoft(seg%tlo),Qoft(seg%thi),Q
        n = ceiling(abs(delta_t/seg%dt))
        delta_t = delta_t/n
        ra = seg%ra(i)
@@ -371,7 +371,7 @@ contains
        end do
        res = one/ra
     end if
-    !write(0,'(f15.10,i,f15.12)') t, nseg, res ! HOPPER TESTING
+    !write(*,'(f15.10,i,f15.12)') t, nseg, res ! HOPPER TESTING
   end function na_Value
   
 

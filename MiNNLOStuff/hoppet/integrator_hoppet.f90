@@ -80,7 +80,7 @@ contains
        IF(1+CONST*ABS(C2) .NE. 1) GO TO 2 
        H=0 
        !CALL MTLPRT(NAME,'D113.1','TOO HIGH ACCURACY REQUIRED') 
-       write(0,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
+       write(*,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
        GO TO 99 
     END IF
 99  cgauss64=H 
@@ -162,7 +162,7 @@ contains
        IF(1+CONST*ABS(C2) .NE. 1) GO TO 2 
        H=0 
        !CALL MTLPRT(NAME,'D113.1','TOO HIGH ACCURACY REQUIRED') 
-       write(0,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
+       write(*,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
        GO TO 99 
     END IF
 99  cgauss64=H 
@@ -250,7 +250,7 @@ contains
        IF(1+CONST*ABS(C2) .NE. 1) GO TO 2 
        H=0 
        !CALL MTLPRT(NAME,'D113.1','TOO HIGH ACCURACY REQUIRED') 
-       write(0,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
+       write(*,*) NAME,'D113.1','TOO HIGH ACCURACY REQUIRED'
        GO TO 99 
     END IF
 99  cgauss64=H 

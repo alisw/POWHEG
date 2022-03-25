@@ -148,7 +148,7 @@ contains
     nullify(tab%nf_int)
     nullify(tab%evops)
 
-    !write(0,*) 'pdf_table info: Number of Q bins is ',tab%nQ
+    !write(*,*) 'pdf_table info: Number of Q bins is ',tab%nQ
     call AllocPDF(grid,tab%tab,0,tab%nQ)
     allocate(tab%lnlnQ_vals(0:tab%nQ))
     allocate(tab%Q_vals(0:tab%nQ))
@@ -221,7 +221,7 @@ contains
     ! figure out how we are going to bin things...
     iQ_prev = -1
     do nflcl = tab%nflo, tab%nfhi
-       !write(0,*) 'nflcl',nflcl
+       !write(*,*) 'nflcl',nflcl
        seginfo => tab%seginfo(nflcl)
 
        call QRangeAtNf(coupling, nflcl, Qlo, Qhi_test)
@@ -241,7 +241,7 @@ contains
        seginfo%lnlnQ_hi = min(lnln(tab,Qhi)-min_dlnlnQ_singleQ, tab%lnlnQ_max)
 
        seginfo%ilnlnQ_lo = iQ_prev + 1
-       !write(0,*) 'ill_lo', seginfo%ilnlnQ_lo
+       !write(*,*) 'ill_lo', seginfo%ilnlnQ_lo
        if ((seginfo%lnlnQ_hi - seginfo%lnlnQ_lo) < two*min_dlnlnQ_singleQ) then
           ! use just one point
           seginfo%ilnlnQ_hi = seginfo%ilnlnQ_lo
@@ -254,7 +254,7 @@ contains
           seginfo%dlnlnQ = (seginfo%lnlnQ_hi - seginfo%lnlnQ_lo)/&
                & (seginfo%ilnlnQ_hi - seginfo%ilnlnQ_lo)
        end if
-       !write(0,*) 'ill_hi', seginfo%ilnlnQ_hi, seginfo%dlnlnQ, &
+       !write(*,*) 'ill_hi', seginfo%ilnlnQ_hi, seginfo%dlnlnQ, &
        !     &invlnln(tab,seginfo%lnlnQ_lo),invlnln(tab,seginfo%lnlnQ_hi), tab%default_dlnlnQ
        iQ_prev = seginfo%ilnlnQ_hi
     end do
@@ -278,7 +278,7 @@ contains
 
     ! set up complementary info...
     do nflcl = tab%nflo, tab%nfhi
-       !write(0,*) 'nflcl',nflcl
+       !write(*,*) 'nflcl',nflcl
        seginfo => tab%seginfo(nflcl)
        do iQ = seginfo%ilnlnQ_lo, seginfo%ilnlnQ_hi
           tab%nf_int(iQ) = nflcl
@@ -291,7 +291,7 @@ contains
     
     ! REMEMBER TO COMPLETE FROM ORIG...
     tab%nf_info_associated = .true.
-    !write(0,*) 'pdf_table info: Number of Q bins changed to ',tab%nQ
+    !write(*,*) 'pdf_table info: Number of Q bins changed to ',tab%nQ
   end subroutine AddNfInfoToPdfTable
 
 
@@ -545,7 +545,7 @@ contains
     tab%StartScale_iQlo = iQ_lo
     ! force this...
     iQ_hi = iQ_lo + 1
-    !write(0,*) iQ_lo, iQ_hi
+    !write(*,*) iQ_lo, iQ_hi
     !lnlnQ_norm_start = lnln_norm(tab,StartScale)
 
 
@@ -559,7 +559,7 @@ contains
     do i = iQ_lo, 0, -1
        Q_init = last_Q
        Q_end = invlnln(tab,tab%lnlnQ_vals(i))
-       !write(0,*) 'doing ev from ',Q_init,' to', Q_end
+       !write(*,*) 'doing ev from ',Q_init,' to', Q_end
 
        if (present(StartDist)) then
           call EvolvePDF(dh, dist, &
@@ -582,9 +582,9 @@ contains
     do i = iQ_hi, tab%nQ
        Q_init = last_Q
        Q_end = invlnln(tab,tab%lnlnQ_vals(i))
-       !write(0,*) 'doing ev from ',Q_init,' to', Q_end
+       !write(*,*) 'doing ev from ',Q_init,' to', Q_end
 
-       !write(0,*) 'doing ev from ',Q_init,' to', Q_end
+       !write(*,*) 'doing ev from ',Q_init,' to', Q_end
        if (present(StartDist)) then
           call EvolvePDF(dh, dist,&
                & coupling, Q_init, Q_end, muR_Q, nloop, untie_nf)
@@ -650,7 +650,7 @@ contains
        val(iflv) = sum(wgts*tab%tab(iylo:iylo+size(y_wgts)-1,&
             & iflv,ilnlnQ_lo:ilnlnQ_hi))
     end do
-    !write(0,*) ilnlnQ_lo, ilnlnQ_hi, real(lnlnQ_wgts), val(1)
+    !write(*,*) ilnlnQ_lo, ilnlnQ_hi, real(lnlnQ_wgts), val(1)
     
     deallocate(y_wgts, wgts)
   end subroutine EvalPdfTable_yQ
@@ -719,7 +719,7 @@ contains
        do i = 0, tab%nQ
           call Delete(tab%evops(i))
        end do
-       !write(0,*) "CURRENTLY UNABLE TO DELETE EVOP CONTENTS"
+       !write(*,*) "CURRENTLY UNABLE TO DELETE EVOP CONTENTS"
        deallocate(tab%evops)
     end if
   end subroutine pdftab_DelTab_0d
@@ -823,12 +823,12 @@ contains
        else
           lnlnQ_norm = (lnlnQ-seginfo%lnlnQ_lo)/seginfo%dlnlnQ &
                &+ seginfo%ilnlnQ_lo
-          !write(0,*) lnlnQ_norm, seginfo%dlnlnQ
+          !write(*,*) lnlnQ_norm, seginfo%dlnlnQ
           iQ_lo = floor(lnlnQ_norm) - nrequest/2
           iQ_lo = max(seginfo%ilnlnQ_lo, min(seginfo%ilnlnQ_hi-nrequest,iQ_lo))
           iQ_hi = min(seginfo%ilnlnQ_hi,iQ_lo + nrequest)
           lnlnQ_norm = lnlnQ_norm - iQ_lo
-          !write(0,*) iQ_lo, iQ_hi, invlnln(tab,lnlnQ), lnlnQ_norm
+          !write(*,*) iQ_lo, iQ_hi, invlnln(tab,lnlnQ), lnlnQ_norm
        end if
     end if
   end subroutine request_iQrange

@@ -218,7 +218,7 @@ contains
        end do
        do 
           !-- could be more efficient -- but too lazy for now
-          !write(0,'(4f20.15)') upper, lower, dummy, alfas
+          !write(*,'(4f20.15)') upper, lower, dummy, alfas
           middle = sqrt(lower*upper)
           call priv_as_init_2l(coupling,middle)
           dummy = Value(coupling,Qloc)
@@ -440,10 +440,10 @@ contains
   SUBROUTINE HWWARN(ICODE) 
     integer, intent(in) :: icode
     real(dp) :: a, b
-    write(0,*) ' ALFAS WARNING CODE',ICODE
+    write(*,*) ' ALFAS WARNING CODE',ICODE
     a = sqrt(0.0_dp)
     b = a**2
-    !write(0,*) 1.0_dp/(a-b)
+    !write(*,*) 1.0_dp/(a-b)
     stop
   END SUBROUTINE HWWARN
 

@@ -574,7 +574,7 @@ c     Next we should find an =
       enddo
 c     If there is no =, it is an error
       if(ieq>lb) goto 999
-      if(buf(ieq:ieq) /= '=') goto 999
+      if(buf(ieq:ieq) /= '=') goto 998
 c     Look for number to read
       call nextword(ieq+1,i1,i2)
       read(buf(i1:i2),fmt=*,err=999) val

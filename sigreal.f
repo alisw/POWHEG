@@ -419,19 +419,29 @@ c are consistent with total Born
       logical valid_emitter,iszero,isnonzero,isequal,bad_born_kin,
      1     bad_real_kin
       external valid_emitter,bad_real_kin
-      real * 8 tolpar
+      real * 8 tolparb,tolpar
 c     The tolpar parameter sets the minimum in the ratio (transverse momentum)/(total energy)
 c     for a kinematic configuration to be accepted for collinear tests. It is started
 c     at 1, and for each failed configuration it is reduced by a factor 0.95 until an
 c     acceptable configuration is found
-      tolpar = 1
+      tolparb = 1
  1    continue
-      tolpar = tolpar * 0.95d0
-      do j=1,ndiminteg-3
-         xborn(j)=random()
+      tolparb = tolparb * 0.95d0
+      if(tolparb == 0) then
+c     We must abort this test
+         write(*,*) 'checksoft: cannot complete the test; returning'
+         return
+      endif
+c
+      do
+         do j=1,ndiminteg-3
+            xborn(j)=random()
+         enddo
+         call gen_born_phsp(xborn)
+         if(kn_jacborn /= 0d0) exit
       enddo
-      call gen_born_phsp(xborn)
-      if(bad_born_kin(tolpar)) goto 1
+      
+      if(bad_born_kin(tolparb)) goto 1
       call setscalesbtilde
       call allborn
       call checkborn(iun)
@@ -441,6 +451,11 @@ c      write(iun,*)' mass',sqrt(2*dotp(kn_pborn(0,3),kn_pborn(0,4)))
          xrad(j)=random()
       enddo
       tolpar = tolpar * 0.95d0
+c     If we cannot pass the soft limit tolerance test, regenerate
+c     born configuration
+      if(tolpar == 0) then
+         goto 1
+      endif
 c Check soft limits
       if(valid_emitter(kn_emitter)) then
           do jexp=1,nexp
@@ -536,20 +551,35 @@ c     The tolpar parameter sets the minimum in the ratio (transverse momentum)/(
 c     for a kinematic configuration to be accepted for collinear tests. It is started
 c     at 1, and for each failed configuration it is reduced by a factor 0.95 until an
 c     acceptable configuration is found
-      real * 8 tolpar
-      tolpar = 1
+      real * 8 tolparb,tolpar
+      tolparb = 1
  19   continue
-      tolpar = tolpar * 0.95d0
-      do j=1,ndiminteg-3
-         xborn(j)=random()
+      tolparb = tolparb * 0.95d0
+      if(tolparb == 0) then
+c     We must abort this test
+         write(*,*) 'checkcoll: cannot complete the test; returning'
+         return
+      endif
+      do
+         do j=1,ndiminteg-3
+            xborn(j)=random()
+         enddo
+         call gen_born_phsp(xborn)         
+         if (kn_jacborn /= 0d0) exit
       enddo
-      call gen_born_phsp(xborn)
-      if(bad_born_kin(tolpar)) goto 19
+
+      if(bad_born_kin(tolparb)) goto 19
       call setscalesbtilde
       call allborn
       tolpar = 1
  20   continue
       tolpar = tolpar * 0.95d0
+c     If we cannot pass the soft limit tolerance test, regenerate
+c     born configuration
+      if(tolpar == 0) then
+         goto 19
+      endif
+      
       do j=1,3
          xrad(j)=random()
       enddo
@@ -711,7 +741,7 @@ c     exclude zero pdf's
       enddo
 
 c     if any transverse momentum is too small, return
-      if(l > 1) then ! exclude single resonance production!
+      if(l > 3) then ! exclude single resonance production!
          do k=3,l
             if(p(1,k)**2+p(2,k)**2 < (e*tolpar)**2) return
             if(l > 2) then
@@ -771,7 +801,7 @@ c tolerate zero pdf only for heavy quarks
       enddo
 
 c     if any transverse momentum is too small, return
-      if(l > 1) then ! exclude single resonance production!
+      if(l > 3) then ! exclude single resonance production!
          do k=3,l
             if(p(1,k)**2+p(2,k)**2 < (e*tolpar)**2) return
             if(l > 2) then
@@ -813,42 +843,51 @@ c     any transverse momentum of a pair is too small
       logical ini
       data ini/.true./
       save ini,equivto,equivcoef
-      external pwhg_pt2,dijterm
+      real * 8 powheginput
+      external pwhg_pt2,dijterm,powheginput
       if(ini) then
          do alr=1,flst_nalr
             equivto(alr)=-1
          enddo
          if(flg_smartsig) then
             flg_in_smartsig = .true.
-            call randomsave
+            call fillequivarrayrad(flst_nalr,equivto,equivcoef,iret)
+            if(iret<0) then
+               call randomsave
 c     generate "nmomset" random real-phase space configurations
-            call fillmomenta(nlegreal,nmomset,kn_masses,preal)
-            do alr=1,flst_nalr
-               flst_cur_alr = alr
-               if(kn_emitter.eq.0) then
-                  kn_resemitter=0
-               else
-                  kn_resemitter=flst_alrres(nlegreal,alr)
-               endif
-               do j=1,nmomset
-                  call realgr(
-     1                 flst_alr(1,alr),preal(0,1,j),res(j,alr))
-               enddo
-               call compare_vecs(nmomset,alr,res,1,alrpr,cprop,iret)
-               if(iret.eq.0) then
+               call fillmomenta(nlegreal,nmomset,kn_masses,preal)
+               do alr=1,flst_nalr
+                  flst_cur_alr = alr
+                  if(kn_emitter.eq.0) then
+                     kn_resemitter=0
+                  else
+                     kn_resemitter=flst_alrres(nlegreal,alr)
+                  endif
+                  do j=1,nmomset
+                     call realgr(
+     1                    flst_alr(1,alr),preal(0,1,j),res(j,alr))
+                  enddo
+                  call compare_vecs(nmomset,alr,res,1,alrpr,cprop,iret)
+                  if(iret.eq.0) then
 c     they are equal
-                  equivto(alr)=alrpr
-                  equivcoef(alr)=1
-               elseif(iret.eq.1) then
+                     equivto(alr)=alrpr
+                     equivcoef(alr)=1
+                  elseif(iret.eq.1) then
 c     they are proportional
-                  equivto(alr)=alrpr
-                  equivcoef(alr)=cprop
-               else
+                     equivto(alr)=alrpr
+                     equivcoef(alr)=cprop
+                  else
 c     < 0 for unequal:
-                  equivto(alr)=-1
+                     equivto(alr)=-1
+                  endif
+               enddo
+               call randomrestore
+               call printrealequivregions("rad",equivto,equivcoef)
+c     Write equiv file, if required
+               if(powheginput('#writeequivfile') == 1) then
+                  call writeequivfile('rad',flst_nalr,equivto,equivcoef)
                endif
-            enddo
-            call randomrestore
+            endif
          endif
          flg_in_smartsig = .false.
          ini=.false.
@@ -1006,47 +1045,53 @@ c    csi^2 (1-y)   for FSR regions
       logical ini
       data ini/.true./
       save ini,/cequivtoreal/,/cequivcoefreal/
-      real * 8 dijterm
-      external dijterm
+      real * 8 dijterm,powheginput
+      external dijterm,powheginput
       if(ini) then
          do alr=1,flst_nalr
             equivto(alr)=-1
          enddo
          if(flg_smartsig) then
             flg_in_smartsig = .true.
-            call  printrealequiv         
-            call randomsave
+            call fillequivarraybtl(flst_nalr,equivto,equivcoef,iret)
+            if(iret<0) then
+               call randomsave
 c     generate "nmomset" random real-phase space configurations
-            call fillmomenta(nlegreal,nmomset,kn_masses,preal)
-            do alr=1,flst_nalr
-               flst_cur_alr = alr
-               do j=1,nmomset
-                  if(kn_emitter.eq.0) then
-                     kn_resemitter=0
-                  else
-                     kn_resemitter=flst_alrres(nlegreal,alr)
-                  endif
-                  call realgr(
-     1                 flst_alr(1,alr),preal(0,1,j),res(j,alr))
-               enddo
-               call compare_vecs(nmomset,alr,res,0,alrpr,cprop,iret)
-               if(iret.eq.0) then
+               call fillmomenta(nlegreal,nmomset,kn_masses,preal)
+               do alr=1,flst_nalr
+                  flst_cur_alr = alr
+                  do j=1,nmomset
+                     if(kn_emitter.eq.0) then
+                        kn_resemitter=0
+                     else
+                        kn_resemitter=flst_alrres(nlegreal,alr)
+                     endif
+                     call realgr(
+     1                    flst_alr(1,alr),preal(0,1,j),res(j,alr))
+                  enddo
+                  call compare_vecs(nmomset,alr,res,0,alrpr,cprop,iret)
+                  if(iret.eq.0) then
 c     they are equal:
-                  equivto(alr)=alrpr
-                  equivcoef(alr)=1
-               elseif(iret.eq.1) then
+                     equivto(alr)=alrpr
+                     equivcoef(alr)=1
+                  elseif(iret.eq.1) then
 c     they are proportional:
-                  equivto(alr)=alrpr
-                  equivcoef(alr)=cprop
-               else
+                     equivto(alr)=alrpr
+                     equivcoef(alr)=cprop
+                  else
 c     < 0 for unequal:
-                  equivto(alr)=-1
+                     equivto(alr)=-1
+                  endif
+               enddo
+               call randomrestore
+               call printrealequivregions('btl',equivto,equivcoef)
+c     Write equiv file, if required
+               if(powheginput('#writeequivfile') == 1) then
+                  call writeequivfile('btl',flst_nalr,equivto,equivcoef)
                endif
-            enddo
-            call randomrestore
-         endif
-         call printrealequivregions
+            endif
          flg_in_smartsig = .false.
+         endif
          ini=.false.
       endif
 c End initialization phase; compute graphs
@@ -1288,13 +1333,19 @@ c            write(*,*) 'ptmin = ',ptmin
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       real * 8 ep
-      parameter (ep=1d-8)
       integer nmomset,alr,alrpr,imode,iret,j,k
       real * 8 res(nmomset,*),cprop,rat
+      real * 8 powheginput,tmp
 c imode=0 when called from btilde,
 c imode=1 when called for radiation. In the latter
 c case, graphs that do not have the same underlying Born
-c are not considered.
+c     are not considered.
+      tmp = powheginput("#compare_vecsr_ep")
+      if(tmp>0) then
+         ep = tmp
+      else
+         ep = 1d-8
+      endif
       do j=1,alr-1
          if(flst_emitter(j).ne.flst_emitter(alr)) goto 10
          if(imode.eq.1.and.flst_alr2born(j).ne.flst_alr2born(alr))
@@ -1352,33 +1403,38 @@ c     check if amp2 is finite
       end
 
 
-
-
-
-
-      subroutine printrealequivregions
+      subroutine printrealequivregions(flag,equivto,equivcoef)
 c it prints the set of equivalent alr regions
       implicit none
       include 'nlegborn.h'
       include 'pwhg_flst.h'
+      include 'pwhg_rnd.h'
+      character * 3 flag
       integer equivto(maxalr)
-      common/cequivtoreal/equivto
+c      common/cequivtoreal/equivto
       real * 8 equivcoef(maxalr)
-      common/cequivcoefreal/equivcoef
+c      common/cequivcoefreal/equivcoef
       integer j,k,iun,count
       save count
       data count/0/
       call newunit(iun)
-      write(*,*) 'Writing realequivregions file...'
-      open(unit=iun,file='realequivregions',status='unknown')
+      write(*,*) 'Writing realequivregions-'//flag//' file...'
+      if(rnd_cwhichseed == 'none') then
+         open(unit=iun,file='realequivregions-'//flag,status='unknown')
+      else
+         open(unit=iun,file='realequivregions-'//flag//"-"
+     1        //trim(rnd_cwhichseed),status='unknown')
+      endif
       do j=1,flst_nalr
          if(equivto(j).eq.-1) then
             write(iun,'(a)')
      1           'Beginning sequence of equivalent amplitudes'
-            write(iun,100) 1d0,j, flst_alr(:,j)
+c            write(iun,100) 1d0,j, flst_alr(:,j)
+            write(iun,101) j, 1d0, flst_alr(:,j)
             do k=1,flst_nalr
                if(equivto(k).eq.j) then
-                  write(iun,100) equivcoef(k),k,flst_alr(:,k)
+c                  write(iun,100) equivcoef(k),k,flst_alr(:,k)
+                  write(iun,101) k,equivcoef(k),flst_alr(:,k)
                endif
             enddo
             count=count+1
@@ -1388,74 +1444,8 @@ c it prints the set of equivalent alr regions
       write(iun,'(a,i4,a)') 'Found ',count, ' equivalent groups'
       close(iun)
       write(*,*) 'Done'
- 100  format(d11.4,5x,i4,5x,100(i4,1x))
+c 100  format(d11.4,5x,i4,5x,100(i4,1x))
+ 101  format(i4,5x,d11.4,5x,100(i4,1x))
       end
-
-      subroutine printrealequiv
-c it prints the set of equivalent real configurations
-      implicit none
-      include 'nlegborn.h'
-      include 'pwhg_flst.h'
-      include 'pwhg_flg.h'
-      include 'pwhg_kn.h'
-      integer nmomset
-      parameter (nmomset=10)
-      real * 8 res(nmomset,maxprocreal),preal(0:3,nlegreal,nmomset)
-      real * 8 cprop
-      integer equivto(maxprocreal)
-      real * 8 equivcoef(maxprocreal)
-      Integer j,k,iun,count
-      integer ireal,irealpr,iret
-      save count
-      data count/0/      
-      do ireal=1,flst_nreal
-         equivto(ireal)=-1
-      enddo
-      call randomsave
-c     generate "nmomset" random real-phase space configurations
-      call fillmomenta(nlegreal,nmomset,kn_masses,preal)
-      do ireal=1,flst_nreal
-         do j=1,nmomset            
-            call setreal(preal(0,1,j),flst_real(1,ireal),res(j,ireal))
-         enddo
-         call compare_vecs(nmomset,ireal,res,0,irealpr,cprop,iret)
-         if(iret.eq.0) then
-c     they are equal:
-            equivto(ireal)=irealpr
-            equivcoef(ireal)=1
-         elseif(iret.eq.1) then
-c     they are proportional:
-            equivto(ireal)=irealpr
-            equivcoef(ireal)=cprop
-         else
-c     < 0 for unequal:
-            equivto(ireal)=-1
-         endif
-      enddo
-      call randomrestore
-
-      call newunit(iun)
-      open(unit=iun,file='realequiv',status='unknown')
-      write(*,*) 'Writing realequiv file...'
-      do j=1,flst_nreal
-         if(equivto(j).eq.-1) then
-            write(iun,'(a)')
-     1           'Beginning sequence of equivalent amplitudes'
-            write(iun,100) 1d0,j, flst_real(:,j)
-            do k=1,flst_nreal
-               if(equivto(k).eq.j) then
-                  write(iun,100) equivcoef(k),k,flst_real(:,k)
-               endif
-            enddo
-            count=count+1
-         endif
-      enddo
-      write(iun,*) ''
-      write(iun,'(a,i4,a)') 'Found ',count, ' equivalent groups'
-      close(iun)
-      write(*,*) 'Done'
- 100  format(d11.4,5x,i4,5x,100(i4,1x))
-      end
-
 
 

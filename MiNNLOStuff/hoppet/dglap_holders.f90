@@ -141,7 +141,7 @@ contains
           call InitSplitMatLO (grid, dh%P_LO)
           if (dh%nloop >= 2) &
                &call InitSplitMatNLO(grid, dh%P_NLO, factscheme_MSbar)
-          if (dh%nloop >= 3) write(0,*) &
+          if (dh%nloop >= 3) write(*,*) &
                &'DIS factorisation scheme not supported for 3 loops or more'
           call cobj_InitCoeff(grid, dh%C2)
           call cobj_InitCoeff(dh%C2_1, dh%C2, zero)
@@ -167,9 +167,9 @@ contains
              !-- now get a temporary to hold the commutator
              call AllocGridConv(grid,tmp2d)
              !-- work out the commutator: tmp2d=[C,P]
-             !write(0,*) 'lb',lbound(dh%P_LO%singlet), ubound(dh%P_LO%singlet)
-             !write(0,*) 'dh%P_LO%singlet(0,0)%nsub',dh%P_LO%singlet(0,0)%grid%nsub
-             !write(0,*) 'dh%P_LO%singlet(0,1)%nsub',dh%P_LO%singlet(0,1)%grid%nsub
+             !write(*,*) 'lb',lbound(dh%P_LO%singlet), ubound(dh%P_LO%singlet)
+             !write(*,*) 'dh%P_LO%singlet(0,0)%nsub',dh%P_LO%singlet(0,0)%grid%nsub
+             !write(*,*) 'dh%P_LO%singlet(0,1)%nsub',dh%P_LO%singlet(0,1)%grid%nsub
              !-----------------------------------------------
              ! putting the explicit singlet bounds somehow eliminates
              ! an ifc memory error, which was associated with 
@@ -249,12 +249,12 @@ contains
              call AddWithCoeff(dh%P_NLO%NS_V, Cq, -twopi_beta0)
              !
              !   tidy up
-             !write(0,*) 'Hey:',dh%P_LO%singlet(0,0)%subgc(1)%conv(0:3,1)
-             !write(0,*) 'Hey:',dh%P_LO%singlet(0,1)%subgc(1)%conv(0:3,1)
-             !write(0,*) 'Hey:',dh%P_LO%singlet(1,0)%subgc(1)%conv(0:3,1)
-             !write(0,*) 'Hey:',dh%P_LO%singlet(1,1)%subgc(1)%conv(0:3,1)
-             !write(0,*) 'Hey:',               Cq%subgc(1)%conv(0:3,1)
-             !write(0,*) 'Hey:',               Cg%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',dh%P_LO%singlet(0,0)%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',dh%P_LO%singlet(0,1)%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',dh%P_LO%singlet(1,0)%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',dh%P_LO%singlet(1,1)%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',               Cq%subgc(1)%conv(0:3,1)
+             !write(*,*) 'Hey:',               Cg%subgc(1)%conv(0:3,1)
              
              call Delete(Cq)
              call Delete(Cg)
@@ -266,11 +266,11 @@ contains
              call Delete(CgPqg)
              call Delete(CgPgq)
              call Delete(CgPgg)
-             write(0,*) 'result:',dh%P_NLO%singlet(iflv_sigma,iflv_sigma)%conv(10,1)
+             write(*,*) 'result:',dh%P_NLO%singlet(iflv_sigma,iflv_sigma)%conv(10,1)
           end if
           
        case (factscheme_PolMSbar)
-          write(0,*) "SETTING UP POLARIZED EVOLUTION"
+          write(*,*) "SETTING UP POLARIZED EVOLUTION"
           call InitSplitMatPolLO (grid, dh%P_LO)
           if (dh%nloop >= 2) call InitSplitMatPolNLO(grid, &
                &dh%P_NLO, dh%factscheme)
@@ -304,7 +304,7 @@ contains
           dh%P_LO%gq = dconv
 
        case default
-          write(0,*) 'factorisation scheme ',dh%factscheme,&
+          write(*,*) 'factorisation scheme ',dh%factscheme,&
                &' is not currently supported' 
           stop
        end select

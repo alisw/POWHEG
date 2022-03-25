@@ -11,6 +11,7 @@ c     here we always return 0.
       implicit none
       include 'nlegborn.h'
       include 'pwhg_flst.h'
+      include 'pwhg_kn.h'
       include 'pwhg_rad.h'
       include 'pwhg_flg.h'
       include 'pwhg_math.h'
@@ -63,7 +64,7 @@ c     sets xscaled, y, phi in kinematics common block
          if(.not.btildebornon) resborn = 0
          if (.not.flg_bornonly.and..not.imode.eq.0) then
             call reset_timer
-            if(btildevirton) then
+            if(btildevirton .and. kn_jacborn /= 0) then
                call btildevirt(resvirt)
             else
                resvirt = 0
@@ -71,12 +72,12 @@ c     sets xscaled, y, phi in kinematics common block
             call get_timer(seconds)
             call addtocnt('virt time (sec)',seconds)
             call reset_timer
-            if(btildecollon) then
+            if(btildecollon .and. kn_jacborn /= 0) then
                call btildecoll(xrad,rescoll,www)
             else
                rescoll = 0
             endif
-            if(btilderealon) then
+            if(btilderealon .and. kn_jacborn /= 0) then
                call btildereal(xrad,resreal,www)
             else
                resreal = 0
@@ -116,12 +117,12 @@ c in case btlscalereal is set, we need to reset the scales
 c to the underlying Born value for the computation of the
 c collinear remnants.
             call setscalesbtilde
-            if(btildecollon) then
+            if(btildecollon .and. kn_jacborn /= 0) then
                call btildecoll(xrad,rescoll,www)
             else
                rescoll = 0
             endif
-            if(btilderealon) then
+            if(btilderealon .and. kn_jacborn /= 0) then
                call btildereal(xrad,resreal,www)
             else
                resreal = 0
