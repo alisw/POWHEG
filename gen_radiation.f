@@ -15,6 +15,9 @@
       integer mcalls,icalls
       data mcalls,icalls/0,0/
       save mcalls,icalls
+      integer mcallsrmn,icallsrmn
+      data mcallsrmn,icallsrmn/0,0/
+      save mcallsrmn,icallsrmn
       real * 8 pwhg_pt2,pt2max_regular
       external pwhg_pt2,pt2max_regular
       real * 8 weight
@@ -79,7 +82,7 @@ c rad_type=1 for btilde events (used only for debugging purposes)
       else
 c generate remnant n+1 body cross section
          call reset_timer
-         call gen_sigremnant
+         call gen_sigremnant(mcallsrmn,icallsrmn)
          if(notfinite_kin('Real')) goto 1
          call get_timer(seconds)
          call addtocnt("remnant time (sec)",seconds)

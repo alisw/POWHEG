@@ -246,7 +246,7 @@ contains
     nf_init = NfAtQ(coupling, Q_init, muM_mQ=one)
     nf_end  = NfAtQ(coupling, Q_end,  muM_mQ=one)
 
-    !write(0,*) real(Q_init), real(Q_end), nf_init, nf_end
+    !write(*,*) real(Q_init), real(Q_end), nf_init, nf_end
     
     !-- could use sign, but cannot remember subtleties of signed
     !   zeroes in f95, and do not have manual at hand...
@@ -384,7 +384,7 @@ contains
     !-- now actually do something!
     !muR   = quark_masses(nf_int) * ev_MuR_Q
     muR   = QuarkMass(coupling,nf_int) * ev_MuR_Q
-    !write(0,*) 'evolution crossing threshold ', nf_int, muR
+    !write(*,*) 'evolution crossing threshold ', nf_int, muR
 
     !-- fix nf so as to be sure of getting alpha value corresponding
     !   to the desired nf value, despite proximity to threshold.
@@ -598,7 +598,7 @@ contains
     !-- put things back into a "human" format
     !call CopyEvlnPdfToHuman(dh%prep, pdf_ev, pdf)
     call CopyEvlnPdfToHuman(dh%nf, pdf_ev, pdf)
-    !write(0,*) 'hello', lbound(pdf), lbound
+    !write(*,*) 'hello', lbound(pdf), lbound
 
   end subroutine ev_MSBar2DIS
   
@@ -618,7 +618,7 @@ contains
     integer :: ntot=0
 
     fourpibeta0_lnmuR_Q = four*pi*beta0*log(ev_muR_Q)
-    !write(0,*) fourpibeta0_lnmuR_Q
+    !write(*,*) fourpibeta0_lnmuR_Q
     t1 = two*log(Q_init)
     t2 = two*log(Q_end)
 
@@ -649,13 +649,13 @@ contains
        u1 = zero
        u2 = log(1+ev_u_bval*ev_u_asref*(t2-t1)) / ev_u_bval
        n  = ceiling(abs(u2-u1)/ev_tmp_du_ballpark)
-       !write(0,*) ev_u_asref, ev_u_bval
+       !write(*,*) ev_u_asref, ev_u_bval
     end if
     
     du = (u2 - u1)/n
 
     ntot = ntot + n
-    !write(0,*) 'Qinit,end, nsteps', Q_init, Q_end, n, ntot
+    !write(*,*) 'Qinit,end, nsteps', Q_init, Q_end, n, ntot
     u = u1
     do i = 1, n
        call rkstp(du, u, pdf, ev_conv)
@@ -681,7 +681,7 @@ contains
     type(split_mat) :: Pfull
 
     ! for analysing Intel bug
-    !write(0,*) 'X',lbound(pdf),lbound(pdf,dim=1),size(pdf,dim=1)
+    !write(*,*) 'X',lbound(pdf),lbound(pdf,dim=1),size(pdf,dim=1)
 
     select case(ev_du_type)
     case(ev_du_is_dt)

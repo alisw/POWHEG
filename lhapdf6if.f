@@ -176,10 +176,10 @@ c Interface to lhapdf package.
       integer ndns,ih
       real * 8 xmu2,x,fx(-pdf_nparton:pdf_nparton)
       real * 8 fxlha(-6:6)
-      integer j
+      integer j,jid
       real * 8 tmp,mu2_loc
-      real*8 photon
 
+      logical generic_has_id
       logical,save:: ini=.true.
       
       if(ini) then
@@ -200,19 +200,23 @@ c Interface to lhapdf package.
          mu2_loc=pdf_cutoff_fact**2 *pdf_q2min
       endif
 
-      call xfxq2(iset,x,mu2_loc,fxlha)
-c photon induced work only with MRST2004QED (ndns = 20460)
-      if (ndns.eq.20460) then
-          call xfphoton(x,sqrt(mu2_loc),photon)
-      else
-          photon=0d0
-      endif
-
       fx=0
+
+      call xfxq2(iset,x,mu2_loc,fxlha)
       fx(-6:6)=fxlha/x
-      if(pdf_nparton.ge.22) then
-         fx(22)=photon/x
-      endif
+
+      do jid=11,pdf_nparton
+         if(jid==11 .or. jid==13 .or. jid==15 .or. jid==22) then
+            if(generic_has_id(iset,jid)) then
+               call xf_pdgid(iset,jid,x,mu2_loc,fx(jid))
+               fx(jid)=fx(jid)/x
+               if(jid /= 22) then
+                  fx(-jid)=fx(jid)
+               endif
+            endif
+         endif
+      enddo
+
 c 1 is proton, -1 is antiproton, 3 is pi+, -3 is pi-
       if(ih.eq.1) then
          return
@@ -237,20 +241,12 @@ c 0 is deuteron
         fx(2)  = fx(1)
         fx(-2) = fx(-1)         
       elseif(ih.eq.4) then
-c photon pdf
+c ndns is a photon pdf; nothing to do
          continue
       else
          write(*,*) ' genericpdf: unimplemented hadron type ',ih
-         stop
+         call exit(-1)
       endif
-c Bug fixes for version 5.3 of lhapdf
-c      if(ndns.eq.363) then
-c         do j=1,6
-c            fx(j)=fx(j)/2
-c            fx(-j)=fx(-j)/2
-c         enddo
-c      endif
-      
       end
 
       subroutine genericpdfpar(ndns,ih,xlam,scheme,iorder,iret)
@@ -277,13 +273,13 @@ c      endif
       whichpdfpk='lha'
       end
 
-      function alphaspdf(mu)
+      function alphasfrompdf(mu)
       implicit none
       real * 8 lam5
       integer iord,iset,maxsets
       common/cgenericpdf/lam5,iord,iset,maxsets
-      real *8 mu,alphaspdf,tmp
-      call alphasfrompdf(iset,mu,tmp)
-      alphaspdf=tmp
+      real *8 mu,alphasfrompdf,tmp
+      call alphasfrompdf0(iset,mu,tmp)
+      alphasfrompdf=tmp
       return
       end

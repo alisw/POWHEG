@@ -506,7 +506,7 @@ c different grid iterations
      1        xgrid,xint,iret)
          if(iret.ne.0) then
             write(*,*) 'cannot find level '//prevtag//'gridinfo files'
-            call pwhg_exit()
+            call pwhg_exit(1)
          endif
       endif
 c The actual value of the grid is the one to be saved in the
@@ -651,15 +651,15 @@ c     this sets the limits previously stored for btilde in v1,v2
       endif
       end
       
-      subroutine gen_sigremnant
+      subroutine gen_sigremnant(mcalls,icalls)
       implicit none
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       include 'pwhg_flg.h'
       include 'pwhg_rad.h'
       include 'cgengrids.h'
-      real * 8 xx(ndiminteg)
       integer mcalls,icalls
+      real * 8 xx(ndiminteg)
       logical savelogical
       real * 8 sigremnant
       external sigremnant
@@ -1012,6 +1012,7 @@ c check that the different runs are more or less consistent
 
       subroutine  check_stat_consistency(nentries,res,goodentries,iret)
       implicit none
+      include 'pwhg_par.h'
       integer nentries,iret
       integer indices(nentries)
       double precision res(2,nentries)
@@ -1051,6 +1052,7 @@ c     when to swap
             endif
          enddo
       enddo
+      nonz=nentries
       do j=1,nentries
          ij = indices(j)
          tmp = res(2,ij)
@@ -1082,7 +1084,7 @@ c     Compute the average. Neglect zero, NaNs, infs, etc.
                write(*,*) ' old,new err.',ow,weight
                write(*,*) ' deviation:',abs(oav-average)/ow
 c     after half of the runs
-               if(abs(oav-average)/ow.gt.10) then
+               if(abs(oav-average)/ow.gt.par_thresh) then
                   write(*,*) ' check_stat_consistency:'
                   write(*,*)
      1                 ' The program has detected inconsistent results'
@@ -1523,3 +1525,110 @@ c get rid of hiphen before extension
      1     rad_totnegbtl/(2*rad_totnegbtl+rad_tot)
       close(iunstat)
       end
+
+c     sigequiv_hook.f include subroutines to initialize the
+c     equivto and equivcoef arrays. The default sigequiv_hook.f in the
+c     include directory does not do any initialization and returns
+c     a negative return code. It can be replaced with subroutines that
+c     do a proper initialization in an include path preceding the
+c     POWHEG-BOX-V2/include one in the process directory.
+c     If the flag
+c     writeequivfile 1
+c     is present in the powheg.input (and the subroutines in  sigequiv_hook.f
+c     return a negative return code) the program prints files with names
+c     sigequiv_hook-<flag>-XXXX.f, where flag is one of rad, btl, born, virt,
+c     and the suffix -XXXX, where XXXX is a four digit integer, is present
+c     only in the manyseeds runs, and it represents the seed number.
+
+      include 'sigequiv_hook.f'
+      
+
+      subroutine writeequivfile(flag,nentries,equivto,equivcoef)
+      implicit none
+      character *(*) flag
+      integer nentries
+      integer equivto(nentries)
+      real * 8 equivcoef(nentries)
+      include 'pwhg_rnd.h'
+      character * 20 number
+      character * 100 line
+      character * 100 fname
+      integer, parameter :: maxlinelen=65
+      integer iunit
+      integer numlen,j,k,linelen
+c     call newunit(iunit)
+      call newunit(iunit)
+      if(rnd_cwhichseed /= 'none') then
+         fname = 'sigequiv_hook-'//trim(flag)//'-'
+     1    //trim(adjustl(rnd_cwhichseed))//'.f'
+      else
+         fname = 'sigequiv_hook-'//trim(flag)//'.f'
+      endif
+      open(unit=iunit,file=fname,status='unknown')
+      write(iunit,'(a)')
+      write(iunit,'(a)') '      subroutine fillequivarray'
+     1//trim(flag)//'(nentries,equivto,equivcoef,iret)'   
+      write(iunit,'(a)') '      implicit none'
+      write(iunit,'(a)') '      integer nentries,iret'
+      write(iunit,'(a)') '      integer equivto(nentries)'
+      write(iunit,'(a)') '      real * 8 equivcoef(nentries)'
+      write(iunit,'(a)') '      write(*,*) "Using precomputed'//
+     1 'equivalent amplitudes for '//flag//'"'
+      do k=1,2
+         if(k==1) then
+            write(iunit,'(a)') '      equivto=(/'
+         else
+            write(iunit,'(a)') '      equivcoef=(/'
+         endif
+         line=''
+         linelen=0
+         do j=1,nentries
+            if(k==1) then
+               write(number,'(i15)') equivto(j)
+            else
+               write(number,'(D15.9)') equivcoef(j)
+c     clean up double
+               call cleanupdouble(number)
+            endif
+            number=adjustl(number)
+            numlen=len(trim(number))
+            if(numlen+linelen<maxlinelen) then
+               if(j /= nentries) then
+                  line=trim(line)//trim(number)//','
+               else
+                  line=trim(line)//trim(number)
+               endif
+            else
+               write(iunit,'(a)') '     1 '//trim(line)
+               if(j /= nentries) then
+                  line=trim(number)//','
+               else
+                  line=trim(number)
+               endif
+            endif
+            linelen=len(trim(line))
+         enddo
+         write(iunit,'(a)') '     1 '//trim(line)//'/)'
+      enddo
+c iret=0 means that the arrays were filled by the subroutine.      
+      write(iunit,'(a)') '      iret = 0'
+      write(iunit,'(a)') '      end'
+      close(iunit)
+      contains
+      subroutine cleanupdouble(nnn)
+      character *(*) nnn
+      integer indd
+      indd = index(nnn,'D')
+      if(nnn(indd+1:indd+1)=='+') then
+         nnn=nnn(1:indd)//nnn(indd+2:) ! skip the +
+      endif
+      do while(nnn(indd+1:indd+1)=='0' .and. nnn(indd+1:) /='0')
+         nnn=nnn(1:indd)//nnn(indd+2:) ! skip leading 0 in exponent
+      enddo
+      do while(nnn(indd-1:indd-1)=='0')
+         nnn=nnn(1:indd-2)//nnn(indd:) ! skip trailing 0 before D
+         indd = indd - 1
+      enddo
+      end subroutine cleanupdouble
+      end
+

@@ -12,7 +12,16 @@ ANALYSIS=dummy
 #STATIC= -static
 #
 ifeq ("$(COMPILER)","gfortran")	
-F77= gfortran -fno-automatic 	
+FMISMATCH=
+GFORTRAN_VERION = $(shell gfortran --version | head -1 | rev | cut -d " " -f1 | rev)
+version_tuple := $(subst ., ,$(GFORTRAN_VERION:%=%))
+GFORTRAN_VERION_MAJOR := $(word 1,$(version_tuple))
+GFORTRAN_VERION_MINOR := $(word 2,$(version_tuple))
+GFORTRAN_VERION_PATCH := $(word 3,$(version_tuple))
+ifeq ($(shell test $(GFORTRAN_VERION_MAJOR) -ge 10; echo $$?), 0)
+FMISMATCH=-fallow-argument-mismatch
+endif
+F77= gfortran -fno-automatic $(FMISMATCH)
 ## -fbounds-check sometimes causes a weird error due to non-lazy evaluation
 ## of boolean in gfortran.
 #FFLAGS= -Wall -Wimplicit-interface -fbounds-check
@@ -37,6 +46,12 @@ OPT = -O3 #-fast
 #DEBUG= -debug -g
 endif
 
+SYSTEM=$(shell uname -s)
+STDLIBCPP=-lstdc++
+ifeq ("$(SYSTEM)", "Darwin")
+STDLIBCPP=-lc++
+endif
+
 OBJ=obj-$(COMPILER)
 
 
@@ -55,7 +70,7 @@ ifeq ("$(PDF)","lhapdf")
 LHAPDF_CONFIG=lhapdf-config
 PDFPACK=lhapdf6if.o lhapdf6ifcc.o
 FJCXXFLAGS+= $(shell $(LHAPDF_CONFIG) --cxxflags)
-LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF -lstdc++
+LIBSLHAPDF= -Wl,-rpath,$(shell $(LHAPDF_CONFIG) --libdir)  -L$(shell $(LHAPDF_CONFIG) --libdir) -lLHAPDF $(STDLIBCPP)
 ifeq  ("$(STATIC)","-static") 
 ## If LHAPDF has been compiled with gfortran and you want to link it statically, you have to include
 ## libgfortran as well. The same holds for libstdc++. 
@@ -63,7 +78,7 @@ ifeq  ("$(STATIC)","-static")
 ## does perform this inclusion. The path has to be set by the user. 
  LIBGFORTRANPATH=/usr/lib/gcc/x86_64-redhat-linux/4.1.2
  LIBSTDCPP=/lib64
- LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) -lstdc++
+ LIBSLHAPDF+=  -L$(LIBGFORTRANPATH)  -lgfortranbegin -lgfortran -L$(LIBSTDCPP) $(STDLIBCPP)
 endif
 LIBS+=$(LIBSLHAPDF)
 else

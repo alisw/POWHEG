@@ -1,0 +1,69 @@
+numevts 100000 ! number of events to be generated
+ih1   1        ! hadron 1 (1 for protons, -1 for antiprotons)
+ih2   1        ! hadron 2 (1 for protons, -1 for antiprotons)
+ebeam1 6500d0  ! energy of beam 1
+ebeam2 6500d0  ! energy of beam 2
+
+! 303400 = NNPDF31_nlo_as_0118
+! Remember: you can install pdfs like 'lhapdf install NNPDF31_nlo_as_0118'
+! then 'lhapdf update' 
+lhans1 303400    ! Pdf set for hadron 1 (LHA numbering)
+lhans2 303400    ! pdf set for hadron 2 (LHA numbering)
+
+! for not equal pdf set QCDLambda5
+! QCDLambda5 0.22616191135470262
+
+! Parameters to allow or not the use of stored data
+use-old-grid    1 ! if 1 use old grid if file pwggrids.dat is present (<> 1 regenerate)
+use-old-ubound  1 ! if 1 use norm of upper bounding function stored in pwgubound.dat, if present; <> 1 regenerate
+
+ncall1 100000  ! number of calls for initializing the integration grid
+itmx1    5     ! number of iterations for initializing the integration grid
+ncall2 100000  ! number of calls for computing the integral and finding upper bound
+itmx2    5     ! number of iterations for computing the integral and finding upper bound
+foldcsi   2    ! number of folds on csi integration
+foldy     5    ! number of folds on  y  integration
+foldphi   1    ! number of folds on phi integration
+nubound 500000 ! number of bbarra calls to setup norm of upper bounding function
+icsimax  1     ! <= 100, number of csi subdivision when computing the upper bounds
+iymax    5     ! <= 100, number of y subdivision when computing the upper bounds
+xupbound 2d0   ! increase upper bound for radiation generation
+
+bornktmin 10
+bornsuppfact 4000 ! needed to get photons over a wide range of 100 GeV to over 1 TeV (ATLAS range), not for low energy photons
+
+alphaem_inv  137.0359895  ! 1/alphaem
+
+renscfact  1.0d0   ! (default 1d0) ren scale factor: muren  = muref * renscfact 
+facscfact  1.0d0   ! (default 1d0) fac scale factor: mufact = muref * facscfact 
+
+#bornonly    1   ! (default 0) if 1 do Born only
+#novirtual   1   ! ignore virtuals
+#flg_debug   1
+emvirtual    1   ! compute soft-virtual QED terms (integrated subtractions)
+
+doublefsr  1  ! redefinition of emitter and emitted, recommended by powheg authors
+iupperfsr  1  ! version of upperbounding, 2 ill-defined for massless process
+
+manyseeds  1     ! use pwgseeds.dat for random number input
+parallelstage  1 ! which stage to run
+xgriditeration 1 ! which grid iteration in stage 1
+
+! for artificially enhanced statistics. If applied, don't forget to multiply the regular weight with 'sudakovwgt'. 
+enhancedradfac 50 ! if > 0 then the splitting kernel used for photon radiation is multiplied by this factor (lhrwgt_id has to be set, too)
+#lhrwgt_id 'central'  ! lhrwgt_ reweighting does not work with this version of the code
+#lhrwgt_descr 'Central weight, photon splitting enhanced by factor 50' ! lhrwgt_ reweighting does not work with this version of the code
+rwl_file '-'
+<initrwgt>
+<weightgroup name='nominal' combine='None'>
+<weight id='0'>default</weight>
+</weightgroup>
+<weightgroup name='scale_variations' combine='None'>
+<weight id='1'> renscfact=2d0 facscfact=2d0 </weight>
+<weight id='2'> renscfact=0.5d0 facscfact=0.5d0 </weight>
+<weight id='3'> renscfact=1d0 facscfact=2d0 </weight>
+<weight id='4'> renscfact=1d0 facscfact=0.5d0 </weight>
+<weight id='5'> renscfact=2d0 facscfact=1d0 </weight>
+<weight id='6'> renscfact=0.5d0 facscfact=1d0 </weight>
+</weightgroup>
+</initrwgt>

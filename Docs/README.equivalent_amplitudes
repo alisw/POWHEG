@@ -1,0 +1,51 @@
+
+In POWHEG there is a mechanism to identify equivalent amplitudes (for example, differing only by irrelevant flavour labels).
+Normally, when the program starts, powheg checks if a group of amplitudes are equal or proportional, by comparing
+thier values on 10 randomly chosen momentum assignments.
+
+Starting with version 3776 some options have been added in order to fix the equivalent amplitudes information at
+compile time. The tolerance parameter to determine if two amplitudes are related, after version 3776, can
+be overridden by the use by adding the line
+
+compare_vecsr_ep <value>   ! the default is 1d-8. This is the tolerance parameter for the real amplitudes.
+compare_vecsb_ep <value>   ! the default is 1d-12. This is the tolerance parameter for the born amplitudes.
+compare_vecsv_ep <value>   ! the default is 1d-8. This is the tolerance parameter for the virtual amplitudes.
+
+In order to hardcode the equivalence relations in the program, A
+developer of a POWHEG-BOX implementation can start its program adding
+in the powheg.input file the line
+
+writeequivfile 1
+
+After the program has invoked for the first time the Born, the real and the virtual matrix element, the
+following file will be generated in the run directory:
+
+sigequiv_hook-btl-XXXX.f
+sigequiv_hook-rad-XXXX.f
+sigequiv_hook-virt-XXXX.f
+sigequiv_hook-born-XXXX.f
+
+The -XXXX label stands for the seed number in case of manyseeds runs. For single runs this label is absent.
+Meanwhile, the files
+
+realequivregions-btl-XXXX
+realequivregions-rad-XXXX
+virtequiv-XXXX
+bornequiv-XXXX
+
+contain a (more human readable) list of equivalent configurations.
+By inspecting the sigequiv*.f file it should be clear what goes on.
+
+In order to get the hardcoded implementation of equivalent amplitudes the developer should do
+
+cat sigequiv_hook-btl-XXXX.f sigequiv_hook-rad-XXXX.f sigequiv_hook-virt-XXXX.f sigequiv_hook-born-XXXX.f > sigequiv_hook.f
+
+In case of manyseeds, a single seed choice should be made for each file (in some cases of very complex amplitude, the
+developer may find different equivalence groups for different seeds, and should choose the best suited one).
+
+The sigequiv_hook.f should be put in any directory that is searched for files to include before the POWHEG-BOX-V2/include
+directory. Normally, the compilation directory should work fine.
+
+In the POWHEG-BOX-V2/include directory a default sigequiv_hook.f is present, that forces the equivalent amplitudes to be
+searched for at run time. If the developer generated sigequiv_hook.f is present and correctly included in the compilation,
+in subsequent runs no *equiv* files will be generated at all.

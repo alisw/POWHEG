@@ -30,12 +30,15 @@ c     At the moment the main program checks itself for consistency
       integer j,k
       character * 100 string
       real * 8 dgauss
+      include 'brinclude.h'
       include 'minnlo_flg.h'
       logical theta_boundaries
       common/boundaries/theta_boundaries
       real *8 deltaymaxvalue
       common/cdeltaymax/deltaymaxvalue
       real *8 ymax,ymin,a,c,dgauss_accuracy,powheginput
+      real * 8 accuracy_factor
+      common/accuracy_factor/ accuracy_factor
       logical ini
       data ini/.true./
       save ini,dgauss_accuracy
@@ -156,7 +159,27 @@ c               res = dgauss(integrand_with_HJ,-1d0,1d0,1d-4)/1d8 !ER: using 1d-
 !               res = dgauss(integrand_with_HJ,-1d0,1d0,1d-2)/1d8 !ER: 1d-2 is the only way to have the DY code running reasonably quickly
                res = dgauss(integrand_with_HJ,-1d0,1d0,dgauss_accuracy)/1d8 !MW: with the AP approximation in the spreading we could try higher values again, eg 1d-3
             else
-               res = dgauss(integrand_with_HJ,y1,y2,dgauss_accuracy)/1d8
+c$$$               fourPtsqOsh = 3.1891834005683616d-5 
+c$$$               y1 = -0.99561386051320455d0
+c$$$               y2 = 0.99999999916711657d0
+c$$$               x1sq = 2.8394204673965019d0-9
+c$$$               x2sq = 0.88653038768397741d0
+c$$$               brkn_xb1 = 5.3286212732718225d-5
+c$$$               brkn_xb2 = 0.94155742665223419
+c$$$               fourPtsqOsh = 3.1891834005683616d-5 
+c$$$               y1 = -0.99996148031407717d0
+c$$$               y2 = 0.99999999832494535d0
+c$$$               x1sq = 1.5986849383634349d-8
+c$$$               x2sq =  0.31113270708920993d0 
+c$$$               brkn_xb1 = 1.2643911334565087d-4
+c$$$               brkn_xb2 = 0.55779270978492534d0
+               accuracy_factor = 1d8
+               res = dgauss(integrand_with_HJ,y1,y2,dgauss_accuracy)/accuracy_factor
+               if(res .eq. 0d0) then
+                  accuracy_factor = 1d0
+                  res = dgauss(integrand_with_HJ,y1,y2,dgauss_accuracy)/accuracy_factor
+               endif
+               if(res .eq. 0d0) print*, fourPtsqOsh,y1,y2,x1sq,x2sq,brkn_xb1,brkn_xb2
                res_bounds=res
             endif
 c$$$            if(abs(res/res_bounds-1d0).gt. 1d-3) then
@@ -402,6 +425,8 @@ c$$$      end function integrand_with_HJ
       integer iborn
       real * 8 my_mufact2
       common/my_iborn/my_mufact2,iborn
+      real * 8 accuracy_factor
+      common/accuracy_factor/ accuracy_factor
       real * 8 savemu2, xim, xip, tmax, rndazi
       integer fb
       real *8 born_times_pdf
@@ -426,6 +451,7 @@ c$$$      end function integrand_with_HJ
       call random_number(rndazi)
       brkn_azi = 2*pi*rndazi
       call br_real_phsp_isr_rad
+
 
       if (brkn_x1.gt.1 .or. brkn_x2.gt.1) then
 c     check the condition always, although it should never enter here if
@@ -462,12 +488,12 @@ c     Approximate the ZJ using the AP approximation, see notes BJapprox.tm
             call setborn(brkn_preal,bflav,born,bornjk,bmunu)
             born = born/(2*brkn_sreal) ! include flux here as it is also included in numerator
          endif
-         born_times_pdf=born_times_pdf + pdf1(flst_born(1,fb)) * pdf2(flst_born(2,fb)) * born
+         born_times_pdf = born_times_pdf + pdf1(flst_born(1,fb)) * pdf2(flst_born(2,fb)) * born
       enddo
-      born_times_pdf=born_times_pdf
-      integrand_with_HJ = 1/(2*(1-y**2)+k/2-sqrt(k*(1-y**2)+k**2/4)) * born_times_pdf * 1d8
+
+      integrand_with_HJ = 1/(2*(1-y**2)+k/2-sqrt(k*(1-y**2)+k**2/4)) * born_times_pdf * accuracy_factor
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-      
+
       end function integrand_with_HJ
 
       function integral(y)

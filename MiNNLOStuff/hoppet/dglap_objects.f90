@@ -231,7 +231,7 @@ contains
        !     not want to repeat) -- rather do this stuff in
        !     dglap_holders, where Pqq(LO) will in any case be available.
        !     (Is this "chickening out"?)
-       write(0,*) 'InitSplitMatNLO: unsupported fact scheme', factscheme
+       write(*,*) 'InitSplitMatNLO: unsupported fact scheme', factscheme
        call wae_error('InitSplitMatNLO: stopping')
     end if
     
@@ -294,7 +294,7 @@ contains
     !call wae_error('InitSplitMatNNLO: NNLO not yet implemented')
     factscheme_local = default_or_opt(factscheme_default, factscheme)
     if (factscheme_local /= factscheme_MSbar) then
-       write(0,*) 'InitSplitMatNNLO: unsupported fact scheme', factscheme
+       write(*,*) 'InitSplitMatNNLO: unsupported fact scheme', factscheme
        call wae_error('InitSplitMatNNLO: stopping')
     end if
     
@@ -379,7 +379,7 @@ contains
        !     not want to repeat) -- rather do this stuff in
        !     dglap_holders, where Pqq(LO) will in any case be available.
        !     (Is this "chickening out"?)
-       write(0,*) 'InitSplitMatPolNLO: unsupported fact scheme', factscheme
+       write(*,*) 'InitSplitMatPolNLO: unsupported fact scheme', factscheme
        call wae_error('InitSplitMatPolNLO: stopping')
     end if
     
@@ -433,7 +433,7 @@ contains
     type(split_mat),  intent(inout)        :: P
     type(split_mat),  intent(in)           :: Pin
     real(dp),         intent(in), optional :: factor
-    !if (nf_d /= (nf_int+1)/2) write(0,*) 'WARNING: non-standard nf_d'
+    !if (nf_d /= (nf_int+1)/2) write(*,*) 'WARNING: non-standard nf_d'
 
     !P%loops  = Pin%loops
     P%nf_int = Pin%nf_int
@@ -461,7 +461,7 @@ contains
     type(split_mat),     intent(inout) :: P
     type(split_mat),     intent(in)    :: Padd
     real(dp),       intent(in), optional :: factor
-    !if (nf_d /= (nf_int+1)/2) write(0,*) 'WARNING: non-standard nf_d'
+    !if (nf_d /= (nf_int+1)/2) write(*,*) 'WARNING: non-standard nf_d'
 
     !P%loops = max(P%loops, Padd%loops)
     P%nf_int = assert_eq(P%nf_int, Padd%nf_int, &
@@ -482,7 +482,7 @@ contains
   subroutine Multiply_sm(P, factor)
     type(split_mat),  intent(inout) :: P
     real(dp),         intent(in)    :: factor
-    !if (nf_d /= (nf_int+1)/2) write(0,*) 'WARNING: non-standard nf_d'
+    !if (nf_d /= (nf_int+1)/2) write(*,*) 'WARNING: non-standard nf_d'
 
     call Multiply(P%gg,       factor)
     call Multiply(P%qq,       factor)
@@ -833,7 +833,7 @@ contains
 
     nf_heavy = MTM%nf_int
     nf_light = nf_heavy - 1
-    !write(0,*) 'Doing a MT convolution with nf_heavy =',nf_heavy
+    !write(*,*) 'Doing a MT convolution with nf_heavy =',nf_heavy
 
     if (ncomponents < nf_heavy) call wae_error('cobj_ConvMTM:',&
             &'ncomponents in representation is < nf in MTM.')
@@ -943,11 +943,11 @@ contains
     cc_piece = cc_DELTA
     sanity2 = coeff_g(zero)
     if (sanity1 /= zero .or. sanity2 /= zero) then
-       write(0,*) 'WARNING in cobj_InitCoeffHO **********************'
-       write(0,*) 'gluon coefficient function has virtual corrections'
-       write(0,*) 'this could be a sign that quark and gluon cf fns have&
+       write(*,*) 'WARNING in cobj_InitCoeffHO **********************'
+       write(*,*) 'gluon coefficient function has virtual corrections'
+       write(*,*) 'this could be a sign that quark and gluon cf fns have&
             & been exchanged'
-       write(0,*) '**************************************************'
+       write(*,*) '**************************************************'
     end if
   end subroutine cobj_InitCoeffHO
 

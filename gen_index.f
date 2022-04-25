@@ -86,6 +86,10 @@ c remnant
 c regular
          iret=2
          call pick_random(flst_nregular,rad_reg_arr,rad_realreg)
+c     At this point, for a regular event, kn_emitter is not well
+c     defined. We set it to zero to avoid issues in gen_real_phsp_isr
+c     (see svn comment at revision 3744)
+         kn_emitter=0 
          call gen_real_phsp_isr(rad_xradremn,dum1,dum2,dum3,dum4)
       endif
       end

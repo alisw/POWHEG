@@ -87,32 +87,42 @@ c of the remnant component.
       logical ini
       data ini/.true./
       save ini,/cequivtoborn/,/cequivcoefborn/
+      real * 8 powheginput
       if(ini) then
          do iborn=1,flst_nborn
             equivto(iborn)=-1
          enddo
          if(flg_smartsig) then
             flg_in_smartsig = .true.
-            call randomsave
-            call fillmomenta(nlegborn,nmomset,kn_masses,pborn)
-            do iborn=1,flst_nborn
-               do j=1,nmomset
-                  flst_cur_iborn = iborn 
-                  call setborn0(pborn(0,1,j),flst_born(1,iborn),
-     1                 born(j,iborn),bornjk(1,1,j,iborn),
-     2                 bmunu(0,0,1,j,iborn))
+            call fillequivarrayborn(flst_nborn,equivto,equivcoef,iret)
+            if(iret<0) then
+               call randomsave
+               call fillmomenta(nlegborn,nmomset,kn_masses,pborn)
+               do iborn=1,flst_nborn
+                  do j=1,nmomset
+                     flst_cur_iborn = iborn 
+                     call setborn0(pborn(0,1,j),flst_born(1,iborn),
+     1                    born(j,iborn),bornjk(1,1,j,iborn),
+     2                    bmunu(0,0,1,j,iborn))
+                  enddo
+                  call compare_vecsb(nmomset,iborn,born,bornjk,bmunu,
+     1                 ibornpr,cprop,iret)
+                  if(iret.eq.0) then
+                     equivto(iborn)=ibornpr
+                     equivcoef(iborn)=1
+                  elseif(iret.eq.1) then
+                     equivto(iborn)=ibornpr
+                     equivcoef(iborn)=cprop
+                  endif
                enddo
-               call compare_vecsb(nmomset,iborn,born,bornjk,bmunu,
-     1              ibornpr,cprop,iret)
-               if(iret.eq.0) then
-                  equivto(iborn)=ibornpr
-                  equivcoef(iborn)=1
-               elseif(iret.eq.1) then
-                  equivto(iborn)=ibornpr
-                  equivcoef(iborn)=cprop
+               call randomrestore
+               call printbornequiv
+c     Write equiv file, if required
+               if(powheginput('#writeequivfile') == 1) then
+                  call writeequivfile('born',
+     1                 flst_nborn,equivto,equivcoef)
                endif
-            enddo
-            call randomrestore
+            endif
          endif
          flg_in_smartsig = .false.
          ini=.false.
@@ -149,11 +159,17 @@ c of the remnant component.
       include 'nlegborn.h'
       include 'pwhg_flst.h'
       real * 8 ep
-      parameter (ep=1d-12)
       integer nmomset,iborn,ibornpr,iret,jborn,k,jleg,kleg,mu,nu
       real * 8 born(nmomset,iborn),cprop,rat,resi,resj
       real * 8 bornjk(nlegborn,nlegborn,nmomset,maxprocborn)
       real * 8 bmunu(0:3,0:3,nlegborn,nmomset,maxprocborn)
+      real * 8 powheginput,tmp
+      tmp = powheginput("#compare_vecsb_ep")
+      if(tmp>0) then
+         ep = tmp
+      else
+         ep = 1d-12
+      endif
       do jborn=1,iborn-1
          rat=born(1,iborn)/born(1,jborn)
          do k=1,nmomset
@@ -257,6 +273,7 @@ c it prints the set of equivalent Born configurations
       implicit none
       include 'nlegborn.h'
       include 'pwhg_flst.h'
+      include 'pwhg_rnd.h'
       integer equivto(maxprocborn)
       common/cequivtoborn/equivto
       real * 8 equivcoef(maxprocborn)
@@ -265,16 +282,23 @@ c it prints the set of equivalent Born configurations
       save count
       data count/0/
       call newunit(iun)
-      open(unit=iun,file='bornequiv',status='unknown')
+      if(rnd_cwhichseed == 'none') then
+         open(unit=iun,file='bornequiv',status='unknown')
+      else
+         open(unit=iun,file='bornequiv-'//
+     1        trim(rnd_cwhichseed),status='unknown')
+      endif
       write(*,*) 'Writing bornequiv file...'
       do j=1,flst_nborn
          if(equivto(j).eq.-1) then
             write(iun,'(a)')
      1           'Beginning sequence of equivalent amplitudes'
-            write(iun,100) 1d0,j, flst_born(:,j)
+c            write(iun,100) 1d0,j, flst_born(:,j)
+            write(iun,101) j, 1d0,flst_born(:,j)            
             do k=1,flst_nborn
                if(equivto(k).eq.j) then
-                  write(iun,100) equivcoef(k),k,flst_born(:,k)
+c                 write(iun,100) equivcoef(k),k,flst_born(:,k)
+                  write(iun,101) k,equivcoef(k),flst_born(:,k)
                endif
             enddo
             count=count+1
@@ -284,5 +308,6 @@ c it prints the set of equivalent Born configurations
       write(iun,'(a,i4,a)') 'Found ',count, ' equivalent groups'
       close(iun)
       write(*,*) 'Done'
- 100  format(d11.4,5x,i4,5x,100(i4,1x))
+c 100  format(d11.4,5x,i4,5x,100(i4,1x))
+ 101  format(i4,5x,d11.4,5x,100(i4,1x))
       end

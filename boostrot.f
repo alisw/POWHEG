@@ -55,8 +55,8 @@ c dir (|dir|=1) with angle phi, given sin phi and cos phi.
       end
 
       subroutine rotate3tovec(v,vec)
-c Rotate vec with the rotation that brings v along the positive
-c third direction.
+c Rotate vec with the rotation that brings the positive
+c third direction along v.
       implicit none
       real * 8 v(3),vec(3)
       real * 8 d(3),dir(3),cosphi,sinphi

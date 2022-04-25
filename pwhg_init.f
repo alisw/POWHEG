@@ -45,6 +45,9 @@ c     Set to true to remember and use identical values of the computed
 c     amplitudes, for Born, real and virtual contributions
       flg_smartsig=.true.
       if(powheginput("#smartsig").eq.0) flg_smartsig=.false.
+c     This flag is set to true while the program is searching for numerically
+c     equivalent amplitudes
+      flg_in_smartsig = .false.
 c     if true also counterterm are output in NLO tests (default)
       flg_withsubtr=.true.
       if(powheginput("#withsubtr").eq.0) flg_withsubtr=.false.

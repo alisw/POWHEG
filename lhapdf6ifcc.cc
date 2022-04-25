@@ -32,15 +32,20 @@ extern "C" {
       fx[j] = pdfs[iset]->xfxQ2(id, x, q2);
     }
   }
-  void xfphoton_(int &iset, double &x, double &q2, double photon) {
-      photon = pdfs[iset]->xfxQ2(22, x, q2);
+
+  bool generic_has_id_(int &iset, int &id) {
+    return pdfs[iset]->hasFlavor(id);
+  }
+  
+  void xf_pdgid_(int &iset, int &id, double &x, double &q2, double &xf) {
+      xf = pdfs[iset]->xfxQ2(id, x, q2);
   }
 
   void setlha6del_(int &iset) {
     delete pdfs[iset];
   }
 
-  void alphasfrompdf_(int &iset,double &q, double &asq) {
+  void alphasfrompdf0_(int &iset,double &q, double &asq) {
     asq = pdfs[iset]->alphasQ(q);
   }
 

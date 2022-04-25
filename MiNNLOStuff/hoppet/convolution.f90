@@ -287,7 +287,7 @@ contains
 
     if (present(order)) then
        !if (order < LIN_ORDER) then
-       !   write(0,*) 'ERROR in InitGridDef: order < 0&
+       !   write(*,*) 'ERROR in InitGridDef: order < 0&
        !        & is not valid in InitGridDef'
        !   stop
        if (abs(order)+1 > grid%ny) then
@@ -351,12 +351,12 @@ contains
                      & also have smaller gdarray%ymax'
                 call wae_error(trim(string1), trim(string2))
                 ! for testing ifort_8_0_039...
-                !write(0,*) 'dy   values (i-1,i)', subgd(i-1:i)%dy
-                !write(0,*) 'ymax values (i-1,i)', subgd(i-1:i)%ymax
-                !write(0,*) indx
-                !write(0,*) gdarray%dy
-                !write(0,*) gdarray(indx(:))%dy
-                !write(0,*) i, subgd(i)%ymax, subgd(i-1)%ymax
+                !write(*,*) 'dy   values (i-1,i)', subgd(i-1:i)%dy
+                !write(*,*) 'ymax values (i-1,i)', subgd(i-1:i)%ymax
+                !write(*,*) indx
+                !write(*,*) gdarray%dy
+                !write(*,*) gdarray(indx(:))%dy
+                !write(*,*) i, subgd(i)%ymax, subgd(i-1)%ymax
                 !stop
              end if
           end if
@@ -515,7 +515,7 @@ contains
        equal = .false.
        return
     else if (gd1%nsub == 0) then
-       if (verbose) write(0,*) gd1%dy,gd2%dy, gd1%ny, gd2%ny, gd1%ymax,gd2%ymax
+       if (verbose) write(*,*) gd1%dy,gd2%dy, gd1%ny, gd2%ny, gd1%ymax,gd2%ymax
        equal = (gd1%dy   == gd2%dy) .and. (gd1%ny == gd2%ny) .and.&
             &  (gd1%ymax == gd2%ymax) .and. (gd1%order == gd2%order)
     else
@@ -536,7 +536,7 @@ contains
     type(grid_def), intent(in) :: gd1, gd2
     character(len=*), intent(in) :: source
     if (.not. (gd1 == gd2)) then
-       write(0,*) 'Problem validating two grid defs in ',source
+       write(*,*) 'Problem validating two grid defs in ',source
        stop
     end if
   end subroutine ValidateGD
@@ -1057,12 +1057,12 @@ contains
     real(dp), parameter :: resc_yvals(npnt_max) = (/ (i,i=0,npnt_max-1) /)
     real(dp) :: wgts(npnt_max)
 
-    !write(0,*) y,grid%ny, ubound(gq,dim=1)
+    !write(*,*) y,grid%ny, ubound(gq,dim=1)
     ny = assert_eq(grid%ny,ubound(gq,dim=1),"EvalGridQuant")
     if (y > grid%ymax*(one+warn_tolerance)) then
-       write(0,*) 'EvalGridQuant: &
+       write(*,*) 'EvalGridQuant: &
             &requested function value beyond maximum'
-       write(0,*) 'y = ', y, 'ymax=',grid%ymax
+       write(*,*) 'y = ', y, 'ymax=',grid%ymax
        stop
     end if
     if (grid%nsub /= 0) then
@@ -1103,12 +1103,12 @@ contains
     real(dp), parameter :: resc_yvals(npnt_max) = (/ (i,i=0,npnt_max-1) /)
     real(dp) :: wgts(npnt_max)
 
-    !write(0,*) y,grid%ny, ubound(gq,dim=1)
+    !write(*,*) y,grid%ny, ubound(gq,dim=1)
     ny = assert_eq(grid%ny,ubound(gq,dim=1),"EvalGridQuant")
     if (y > grid%ymax*(one+warn_tolerance)) then
-       write(0,*) 'EvalGridQuant: &
+       write(*,*) 'EvalGridQuant: &
             &requested function value beyond maximum'
-       write(0,*) 'y = ', y, 'ymax=',grid%ymax
+       write(*,*) 'y = ', y, 'ymax=',grid%ymax
        stop
     end if
     if (grid%nsub /= 0) then
@@ -1173,9 +1173,9 @@ contains
        iylo = iylo + grid%subiy(isub)
     else
        if (y > grid%ymax*(one+warn_tolerance) .or. y < -warn_tolerance) then
-          write(0,*) 'WgtGridQuant: &
+          write(*,*) 'WgtGridQuant: &
                &requested function value outside y range'
-          write(0,*) 'y = ', y, ' but should be 0 < y < ymax=',grid%ymax
+          write(*,*) 'y = ', y, ' but should be 0 < y < ymax=',grid%ymax
           stop
        end if
        
@@ -1218,7 +1218,7 @@ contains
     integer :: i, ny
 
     if (grid%nsub /= 0) then
-       write(0,*) 'ERROR in MomGridQuant:&
+       write(*,*) 'ERROR in MomGridQuant:&
             & multiple grids not yet supported'
     end if
     
@@ -1750,8 +1750,8 @@ contains
     end if
 
     if (istat /= 0) then
-       write(0,*) 'ERROR: problems with deallocation in conv_DelGridConv_0d'
-       !write(0,*) one/sqrt(sin(zero))
+       write(*,*) 'ERROR: problems with deallocation in conv_DelGridConv_0d'
+       !write(*,*) one/sqrt(sin(zero))
        stop
     end if
     
@@ -1904,7 +1904,7 @@ contains
              gc%conv(iy,1) = gc%conv(iy,1) + res
           end do
        end do
-       !write(0,*) 'conv_AddGridConv_func: Negative orders not yet supported'
+       !write(*,*) 'conv_AddGridConv_func: Negative orders not yet supported'
        !stop
     else
        !-- CCN19 p.4 -------------
@@ -2140,7 +2140,7 @@ contains
 !!$       do j = 0, i
 !!$          gqout(i) = gqout(i) + gq(j)*gc%conv(i-j,FULL)
 !!$       end do
-          !write(0,*) i*gc%grid%dy,gqout(i), gc%conva(1)
+          !write(*,*) i*gc%grid%dy,gqout(i), gc%conva(1)
           gqout(i) = (gqout(i)-gq(0)*gc%conv(i,UPPR))
        end do
     else if (order < 0) then
@@ -2252,7 +2252,7 @@ contains
        do i = 0, gc%grid%ny
           gc%conv(i,1) = sum(gca%conv(0:i,1)*gcb%conv(i:0:-1,1))
        end do
-       !write(0,*) 'SetToConvolution: Negative orders not yet supported'
+       !write(*,*) 'SetToConvolution: Negative orders not yet supported'
        !stop
     else
        order = gca%grid%order
