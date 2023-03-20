@@ -45,6 +45,7 @@ c     -*- Fortran -*-
          function gzRewind(file) bind(C, NAME='gzrewind')
          use, intrinsic :: ISO_C_BINDING
          type(c_ptr), value :: file
+         integer(c_int) :: gzRewind
          end function
       end interface
       interface
