@@ -36,6 +36,7 @@ int gzputc(FILE *stream, int c) {
 }
 
 
-void gzrewind(FILE *stream) {
-  return rewind(stream);
+int gzrewind(FILE *stream) {
+  rewind(stream);
+  return 0;
 }
